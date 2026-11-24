@@ -10,6 +10,9 @@ import { FEMA_CATEGORIES, LOG_CATEGORIES } from "@/lib/fema";
 import { equipmentCost, fmtUSD, laborCost, materialCost } from "@/lib/costs";
 import { compressImage, enqueue, type QueuedPhoto } from "@/lib/offline-queue";
 import { useIncidents } from "@/lib/incident-data";
+import { useReferenceData } from "@/lib/rate-cache";
+import { RATE_SOURCE_LABELS, resolveAssetRate, searchRates, type FemaRate, type FleetAsset } from "@/lib/fleet";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useOrgCtx } from "@/components/beacon/org-context";
 import { useSync } from "@/components/beacon/sync-context";
 import { Button } from "@/components/ui/button";
@@ -46,7 +49,7 @@ function Logger() {
   const active = (incidents.data ?? []).filter((i) => i.status !== "closed");
   const [incidentId, setIncidentId] = useState("");
   useEffect(() => { if (!incidentId && active[0]) setIncidentId(active[0].id); }, [active, incidentId]);
-  const depts = useQuery({ queryKey: ["departments", org.id], queryFn: async () => (await supabase.from("departments").select("name").eq("organization_id", org.id).order("name")).data ?? [] });
+  const depts = useQuery({ queryKey: ["departments", org.id], queryFn: async () => (await supabase.from("departments").select("id, name").eq("organization_id", org.id).order("name")).data ?? [] });
   const rates = useQuery({ queryKey: ["rates", org.id], queryFn: async () => (await supabase.from("rate_cards").select("*").eq("organization_id", org.id).order("name")).data ?? [] });
   const deptOpts = (depts.data ?? []).map((d) => ({ v: d.name, l: d.name }));
   const [authorName, setAuthorName] = useState("");
@@ -98,7 +101,7 @@ function Logger() {
         </TabsList>
         <TabsContent value="note"><NoteForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
         <TabsContent value="labor"><LaborForm deptOpts={deptOpts} rates={(rates.data ?? []).filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
-        <TabsContent value="equipment"><EquipForm deptOpts={deptOpts} rates={(rates.data ?? []).filter((r) => r.kind === "equipment")} onSubmit={submit} /></TabsContent>
+        <TabsContent value="equipment"><EquipForm orgId={org.id} deptRows={depts.data ?? []} onSubmit={submit} /></TabsContent>
         <TabsContent value="materials"><MaterialForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
       </Tabs>
     </div>
@@ -232,22 +235,114 @@ function LaborForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: st
   );
 }
 
-function EquipForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: string }[]; rates: Rate[]; onSubmit: SubmitFn }) {
+function EquipForm({ orgId, deptRows, onSubmit }: { orgId: string; deptRows: { id: string; name: string }[]; onSubmit: SubmitFn }) {
   const ts = useTimestamp();
-  const blank = { name: "", code: "", operator: "", department: "", fema: "B", active: "", standby: "", rate: "", location: "" };
+  const ref = useReferenceData(orgId);
+  const rates = ref.data?.rates ?? [];
+  const fleet = ref.data?.fleet ?? [];
+  const [mode, setMode] = useState<"fleet" | "search" | "unlisted">("fleet");
+  const blank = { name: "", code: "", edition: "", source: "fema_schedule", assetId: "", operator: "", department: "", fema: "B", active: "", standby: "", rate: "", location: "", make: "", model: "", capacity: "", hp: "" };
   const [f, setF] = useState(blank);
+  const [q, setQ] = useState(""); const [cat, setCat] = useState("");
+  const [linkLabor, setLinkLabor] = useState(false);
+  const [op, setOp] = useState({ rate: "", fringe: "" });
+  const deptOpts = deptRows.map((d) => ({ v: d.name, l: d.name }));
   const total = equipmentCost(num(f.active), num(f.rate));
+  const categories = [...new Set(rates.map((r) => r.category))].sort();
+  const results = searchRates(rates, q, cat || undefined).slice(0, 40);
+
+  const pickAsset = (a: FleetAsset) => {
+    const r = resolveAssetRate(a, rates);
+    setF({ ...f, assetId: a.id, name: r.equipment_name, code: r.fema_cost_code ?? "", edition: r.schedule_edition ?? "", source: r.rate_source, rate: String(r.hourly_rate), department: deptRows.find((d) => d.id === a.department_id)?.name ?? f.department });
+  };
+  const pickRate = (r: FemaRate) => setF({ ...f, assetId: "", name: `${r.equipment_name} — ${r.specifications ?? ""}`.replace(/ — $/, ""), code: r.cost_code, edition: r.schedule_edition, source: "fema_schedule", rate: String(r.hourly_rate) });
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (await onSubmit("equipment_entries", { entry_time: ts.iso, timestamp_edited: ts.edited, equipment_name: f.name, fema_code: f.code || null, operator_name: f.operator || null, department: f.department || null, fema_category: f.fema, active_hours: num(f.active), standby_hours: num(f.standby), hourly_rate: num(f.rate), work_location: f.location || null })) { setF({ ...blank, department: f.department }); ts.reset(); }
+    const unlisted = mode === "unlisted";
+    const name = unlisted ? `Unlisted: ${[f.make, f.model].filter(Boolean).join(" ")}${f.capacity ? `, ${f.capacity}` : ""}${f.hp ? `, ${f.hp} HP` : ""}` : f.name;
+    if (!name.trim() || (unlisted && !f.make.trim())) { toast.error(unlisted ? "Enter make and model" : "Pick equipment first"); return; }
+    const ok = await onSubmit("equipment_entries", {
+      entry_time: ts.iso, timestamp_edited: ts.edited, equipment_name: name, fema_code: unlisted ? null : f.code || null, fema_cost_code: unlisted ? null : f.code || null,
+      schedule_edition: unlisted ? null : f.edition || null, rate_source: unlisted ? "unlisted_pending_fema" : f.source, city_fleet_asset_id: f.assetId || null,
+      operator_name: f.operator || null, department: f.department || null, fema_category: f.fema, active_hours: num(f.active), standby_hours: num(f.standby), hourly_rate: num(f.rate), work_location: f.location || null,
+    });
+    if (ok && linkLabor && f.operator) {
+      await onSubmit("labor_entries", {
+        entry_time: ts.iso, timestamp_edited: ts.edited, staff_name: f.operator, role_title: "Equipment Operator", department: f.department || null, fema_category: f.fema,
+        regular_hours: num(f.active), overtime_hours: 0, hourly_rate: num(op.rate), fringe_pct: num(op.fringe), task_description: `Operated ${name}${f.location ? ` at ${f.location}` : ""}`,
+      });
+    }
+    if (ok) { setF({ ...blank, department: f.department }); setLinkLabor(false); ts.reset(); }
   };
+
+  const tab = (m: typeof mode, label: string) => (
+    <button type="button" onClick={() => setMode(m)} className={`rounded-md px-3 py-2 text-sm font-medium ${mode === m ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{label}</button>
+  );
+
   return (
     <form onSubmit={save} className={card}>
+      <div className="flex flex-wrap gap-1">{tab("fleet", "My City's Fleet")}{tab("search", "Search FEMA Schedule")}{tab("unlisted", "Unlisted equipment")}</div>
+      {ref.data?.offline && <p className="text-xs text-amber">Offline — using rates cached on this device{ref.data.cachedAt ? ` (${new Date(ref.data.cachedAt).toLocaleString()})` : ""}.</p>}
+
+      {mode === "fleet" && (
+        fleet.length === 0 ? <p className="text-sm text-muted-foreground">No fleet assets yet. A City Admin can add them under City Settings → Fleet & FEMA Rates.</p> : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {fleet.map((a) => { const r = resolveAssetRate(a, rates); return (
+              <button type="button" key={a.id} onClick={() => pickAsset(a)} className={`rounded-lg border p-3 text-left hover:border-amber ${f.assetId === a.id ? "border-amber bg-amber-soft" : ""}`}>
+                <div className="font-mono text-xs text-muted-foreground">{a.asset_number}</div>
+                <div className="font-medium">{a.nickname}</div>
+                <div className="mt-1 font-mono text-xs">{r.fema_cost_code ?? "—"} · ${r.hourly_rate.toFixed(2)}/hr{a.rate_source !== "fema_schedule" && <span className="ml-1 text-amber">{RATE_SOURCE_LABELS[a.rate_source]}</span>}</div>
+              </button>
+            ); })}
+          </div>
+        )
+      )}
+
+      {mode === "search" && (
+        <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <Input autoFocus placeholder="Cost code or keyword — 8312, generator, chainsaw" value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="rounded-md border bg-background px-2 text-sm" value={cat} onChange={(e) => setCat(e.target.value)}>
+              <option value="">All categories</option>{categories.map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <ul className="max-h-72 divide-y overflow-auto rounded-md border">
+            {results.map((r) => (
+              <li key={r.id}>
+                <button type="button" onClick={() => pickRate(r)} className={`grid w-full grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 text-left hover:bg-muted ${f.code === r.cost_code && !f.assetId ? "bg-amber-soft" : ""}`}>
+                  <span className="font-mono text-sm font-semibold">{r.cost_code}</span>
+                  <span className="min-w-0"><span className="block truncate text-sm">{r.equipment_name}</span><span className="block truncate font-mono text-xs text-muted-foreground">{r.specifications} · {r.organization_id ? "city import" : "reference"} {r.schedule_edition}</span></span>
+                  <span className="font-mono text-sm">${Number(r.hourly_rate).toFixed(2)}/{r.unit}</span>
+                </button>
+              </li>
+            ))}
+            {results.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">No match. Try the Unlisted option.</li>}
+          </ul>
+        </div>
+      )}
+
+      {mode === "unlisted" && (
+        <div className="grid gap-3 rounded-md border border-amber bg-amber-soft p-3">
+          <p className="text-sm font-semibold text-amber">Pending FEMA Rate Request — the Finance Auditor will request a comparable rate.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Make"><Input value={f.make} onChange={(e) => setF({ ...f, make: e.target.value })} /></Field>
+            <Field label="Model"><Input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} /></Field>
+            <Field label="Capacity / size"><Input value={f.capacity} onChange={(e) => setF({ ...f, capacity: e.target.value })} /></Field>
+            <Field label="HP"><Input inputMode="decimal" className="font-mono" value={f.hp} onChange={(e) => setF({ ...f, hp: e.target.value })} /></Field>
+          </div>
+        </div>
+      )}
+
+      {mode !== "unlisted" && f.name && (
+        <div className="rounded-md bg-muted p-3 text-sm">
+          <div className="font-medium">{f.name}</div>
+          <div className="font-mono text-xs">Code {f.code || "—"} · Edition {f.edition || "—"} · {RATE_SOURCE_LABELS[f.source]}</div>
+        </div>
+      )}
+
       <TimestampField ts={ts} />
-      <RatePicker rates={rates} onPick={(r) => setF({ ...f, name: r.name, code: r.code ?? "", rate: String(r.hourly_rate) })} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Equipment"><Input required placeholder="Salt Spreader, Skid Steer…" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
-        <Field label="FEMA equipment code"><Input className="font-mono" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></Field>
         <Field label="Operator"><Input value={f.operator} onChange={(e) => setF({ ...f, operator: e.target.value })} /></Field>
         <Field label="Department"><Pick value={f.department} onChange={(v) => setF({ ...f, department: v })} options={deptOpts} /></Field>
         <Field label="FEMA category"><Pick value={f.fema} onChange={(v) => setF({ ...f, fema: v })} options={femaOpts} /></Field>
@@ -256,9 +351,26 @@ function EquipForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: st
       <div className="grid grid-cols-3 gap-4">
         <Field label="Active hrs"><Input inputMode="decimal" className="font-mono" value={f.active} onChange={(e) => setF({ ...f, active: e.target.value })} /></Field>
         <Field label="Standby hrs"><Input inputMode="decimal" className="font-mono" value={f.standby} onChange={(e) => setF({ ...f, standby: e.target.value })} /></Field>
-        <Field label="Hourly rate $"><Input inputMode="decimal" className="font-mono" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} /></Field>
+        <Field label={mode === "unlisted" ? "Interim rate $ (optional)" : "Hourly rate $"}><Input inputMode="decimal" className="font-mono" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} /></Field>
       </div>
-      <TotalRow label="Total equipment cost (active hours)" value={total} />
+      <p className="-mt-2 text-xs text-muted-foreground">Standby hours are logged for internal ops only and excluded from FEMA reimbursement totals.</p>
+
+      <label className="flex items-start gap-3 rounded-md border p-3">
+        <Checkbox checked={linkLabor} onCheckedChange={(v) => setLinkLabor(v === true)} className="mt-0.5" />
+        <span className="grid gap-1 text-sm">
+          <span className="font-medium">Also create a matching Force Account Labor entry for this operator</span>
+          <span className="text-xs text-muted-foreground">FEMA equipment rates exclude operator wages — log the operator's time separately to claim it.</span>
+        </span>
+      </label>
+      {linkLabor && (
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Operator hourly rate $"><Input required inputMode="decimal" className="font-mono" value={op.rate} onChange={(e) => setOp({ ...op, rate: e.target.value })} /></Field>
+          <Field label="Fringe %"><Input inputMode="decimal" className="font-mono" value={op.fringe} onChange={(e) => setOp({ ...op, fringe: e.target.value })} /></Field>
+          {!f.operator && <p className="col-span-2 text-xs text-amber">Enter the operator's name above.</p>}
+        </div>
+      )}
+      <TotalRow label="Reimbursable Total = Active Hours × Hourly Rate" value={total} />
+      <p className="text-xs text-muted-foreground">Representative rates labeled by schedule edition. Verify against the latest official FEMA Schedule of Equipment Rates before filing.</p>
       <Button type="submit" size="lg">Log equipment</Button>
     </form>
   );

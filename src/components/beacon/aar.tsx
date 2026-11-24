@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { canCommand } from "@/lib/org";
 import { FEMA_CATEGORIES, fmtLocal, fmtUTC } from "@/lib/fema";
 import { fmtUSD } from "@/lib/costs";
+import { RATE_SOURCE_LABELS } from "@/lib/fleet";
 import { summarize, type IncidentData } from "@/lib/incident-data";
 import { useOrgCtx } from "./org-context";
 import { EvidenceGallery } from "./evidence";
@@ -73,6 +74,16 @@ export function AfterActionReport({ data }: { data: IncidentData }) {
           <thead><tr><th className={th}>Department</th><th className={th}>Reg hrs</th><th className={th}>OT hrs</th><th className={th}>Labor</th><th className={th}>Equipment</th><th className={th}>Materials</th></tr></thead>
           <tbody className="font-mono">{Object.entries(s.byDept).map(([d, v]) => (
             <tr key={d}><td className={`${td} font-sans`}>{d}</td><td className={td}>{v.reg.toFixed(1)}</td><td className={td}>{v.ot.toFixed(1)}</td><td className={td}>{fmtUSD(v.labor)}</td><td className={td}>{fmtUSD(v.equipment)}</td><td className={td}>{fmtUSD(v.materials)}</td></tr>
+          ))}</tbody>
+        </table>
+
+        <h3 className="mt-6 text-sm font-semibold">Force Account Equipment</h3>
+        <table className="mt-2 w-full border-collapse text-xs">
+          <thead><tr><th className={th}>Equipment</th><th className={th}>FEMA Cost Code</th><th className={th}>Schedule Edition</th><th className={th}>Rate Source</th><th className={th}>Active Hrs</th><th className={th}>Standby Hrs (Non-Reimb.)</th><th className={th}>Hourly Rate</th><th className={th}>Eligible Total</th></tr></thead>
+          <tbody>{data.equipment.map((e) => (
+            <tr key={e.id} className="print-avoid-break"><td className={td}>{e.equipment_name}</td><td className={`${td} font-mono`}>{e.fema_cost_code ?? e.fema_code ?? "—"}</td><td className={`${td} font-mono`}>{e.schedule_edition ?? "—"}</td>
+              <td className={`${td} ${e.rate_source === "unlisted_pending_fema" ? "text-amber font-semibold" : ""}`}>{RATE_SOURCE_LABELS[e.rate_source ?? ""] ?? "—"}</td>
+              <td className={`${td} font-mono`}>{e.active_hours}</td><td className={`${td} font-mono text-muted-foreground`}>{e.standby_hours}</td><td className={`${td} font-mono`}>{fmtUSD(Number(e.hourly_rate))}</td><td className={`${td} font-mono font-semibold`}>{fmtUSD(Number(e.reimbursable_total ?? e.total_cost))}</td></tr>
           ))}</tbody>
         </table>
 

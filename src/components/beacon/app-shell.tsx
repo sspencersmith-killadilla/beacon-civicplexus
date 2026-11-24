@@ -11,6 +11,7 @@ import { BeaconMark } from "./logo";
 import { useFieldMode } from "./field-mode";
 import { useSync } from "./sync-context";
 import { useOrgCtx } from "./org-context";
+import { useReferenceData } from "@/lib/rate-cache";
 
 export function SyncBanner() {
   const { online, pending, syncing, syncNow } = useSync();
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const orgs = useMyOrgs();
   const fm = useFieldMode();
+  useReferenceData(org.id); // keeps FEMA rates + fleet cached for offline logging
   const navigate = useNavigate();
   const p = { org: org.slug };
   return (
@@ -70,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav className="flex flex-wrap items-center gap-1 text-sm">
             <Link to="/app/$org" params={p} activeOptions={{ exact: true }} className="rounded-md px-3 py-2 hover:bg-muted [&.active]:bg-muted [&.active]:font-semibold">Command Hub</Link>
             <Link to="/app/$org/log" params={p} className="rounded-md px-3 py-2 hover:bg-muted [&.active]:bg-muted [&.active]:font-semibold">Field Logger</Link>
-            {role === "city_admin" && <Link to="/app/$org/settings" params={p} className="rounded-md px-3 py-2 hover:bg-muted [&.active]:bg-muted [&.active]:font-semibold">City Settings</Link>}
+            {(role === "city_admin" || role === "finance_auditor") && <Link to="/app/$org/settings" params={p} className="rounded-md px-3 py-2 hover:bg-muted [&.active]:bg-muted [&.active]:font-semibold">City Settings</Link>}
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <Button variant={fm.on ? "default" : "outline"} size="sm" onClick={fm.toggle} aria-pressed={fm.on}><Hand className="h-4 w-4" />Field Mode</Button>

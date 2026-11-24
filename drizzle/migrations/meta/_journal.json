@@ -8,6 +8,13 @@
       "when": 1795544357226,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795544955651,
+      "tag": "0001_fema_rates_and_fleet",
+      "breakpoints": true
     }
   ]
 }

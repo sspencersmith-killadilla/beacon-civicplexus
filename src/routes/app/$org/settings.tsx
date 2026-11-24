@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/fema";
 import { useOrgCtx } from "@/components/beacon/org-context";
+import { FleetManager } from "@/components/beacon/fleet-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +28,8 @@ function Settings() {
   const [dept, setDept] = useState("");
   const [rate, setRate] = useState({ kind: "labor", name: "", code: "", hourly_rate: "", fringe_pct: "" });
 
-  if (role !== "city_admin") return <p className="text-muted-foreground">Only City Admins can manage settings.</p>;
+  if (role === "finance_auditor") return <div className="grid gap-5"><FleetManager /></div>;
+  if (role !== "city_admin") return <p className="text-muted-foreground">Only City Admins and Finance Auditors can manage settings.</p>;
   const done = (error: { message: string } | null, keys: string[][], msg = "Saved") => {
     if (error) { toast.error(error.message); return; }
     toast.success(msg); keys.forEach((k) => void qc.invalidateQueries({ queryKey: k }));
@@ -104,6 +106,7 @@ function Settings() {
           <Button type="submit">Add</Button>
         </form>
       </section>
+      <FleetManager />
     </div>
   );
 }

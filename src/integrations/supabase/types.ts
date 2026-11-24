@@ -59,6 +59,70 @@ export type Database = {
           },
         ]
       }
+      city_fleet_assets: {
+        Row: {
+          asset_number: string
+          created_at: string
+          custom_hourly_rate: number | null
+          department_id: string | null
+          fema_rate_id: string | null
+          id: string
+          justification_notes: string | null
+          make_model_hp: string | null
+          nickname: string
+          organization_id: string
+          rate_source: Database["public"]["Enums"]["rate_source"]
+        }
+        Insert: {
+          asset_number: string
+          created_at?: string
+          custom_hourly_rate?: number | null
+          department_id?: string | null
+          fema_rate_id?: string | null
+          id?: string
+          justification_notes?: string | null
+          make_model_hp?: string | null
+          nickname: string
+          organization_id: string
+          rate_source?: Database["public"]["Enums"]["rate_source"]
+        }
+        Update: {
+          asset_number?: string
+          created_at?: string
+          custom_hourly_rate?: number | null
+          department_id?: string | null
+          fema_rate_id?: string | null
+          id?: string
+          justification_notes?: string | null
+          make_model_hp?: string | null
+          nickname?: string
+          organization_id?: string
+          rate_source?: Database["public"]["Enums"]["rate_source"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_fleet_assets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_fleet_assets_fema_rate_id_fkey"
+            columns: ["fema_rate_id"]
+            isOneToOne: false
+            referencedRelation: "fema_equipment_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "city_fleet_assets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string
@@ -92,6 +156,7 @@ export type Database = {
         Row: {
           active_hours: number
           author_name: string | null
+          city_fleet_asset_id: string | null
           client_generated_id: string
           created_at: string
           created_by: string | null
@@ -102,13 +167,17 @@ export type Database = {
           equipment_name: string
           fema_category: Database["public"]["Enums"]["fema_category"]
           fema_code: string | null
+          fema_cost_code: string | null
           hourly_rate: number
           id: string
           incident_id: string
           operator_name: string | null
           organization_id: string
           original_timestamp: string
+          rate_source: string | null
           rate_verified: boolean
+          reimbursable_total: number | null
+          schedule_edition: string | null
           standby_hours: number
           timestamp_edited: boolean
           total_cost: number | null
@@ -117,6 +186,7 @@ export type Database = {
         Insert: {
           active_hours?: number
           author_name?: string | null
+          city_fleet_asset_id?: string | null
           client_generated_id: string
           created_at?: string
           created_by?: string | null
@@ -127,13 +197,17 @@ export type Database = {
           equipment_name: string
           fema_category?: Database["public"]["Enums"]["fema_category"]
           fema_code?: string | null
+          fema_cost_code?: string | null
           hourly_rate?: number
           id?: string
           incident_id: string
           operator_name?: string | null
           organization_id: string
           original_timestamp?: string
+          rate_source?: string | null
           rate_verified?: boolean
+          reimbursable_total?: number | null
+          schedule_edition?: string | null
           standby_hours?: number
           timestamp_edited?: boolean
           total_cost?: number | null
@@ -142,6 +216,7 @@ export type Database = {
         Update: {
           active_hours?: number
           author_name?: string | null
+          city_fleet_asset_id?: string | null
           client_generated_id?: string
           created_at?: string
           created_by?: string | null
@@ -152,19 +227,30 @@ export type Database = {
           equipment_name?: string
           fema_category?: Database["public"]["Enums"]["fema_category"]
           fema_code?: string | null
+          fema_cost_code?: string | null
           hourly_rate?: number
           id?: string
           incident_id?: string
           operator_name?: string | null
           organization_id?: string
           original_timestamp?: string
+          rate_source?: string | null
           rate_verified?: boolean
+          reimbursable_total?: number | null
+          schedule_edition?: string | null
           standby_hours?: number
           timestamp_edited?: boolean
           total_cost?: number | null
           work_location?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "equipment_entries_city_fleet_asset_id_fkey"
+            columns: ["city_fleet_asset_id"]
+            isOneToOne: false
+            referencedRelation: "city_fleet_assets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "equipment_entries_incident_id_fkey"
             columns: ["incident_id"]
@@ -259,6 +345,56 @@ export type Database = {
           },
           {
             foreignKeyName: "evidence_photos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fema_equipment_rates: {
+        Row: {
+          category: string
+          cost_code: string
+          created_at: string
+          equipment_name: string
+          hourly_rate: number
+          id: string
+          notes: string | null
+          organization_id: string | null
+          schedule_edition: string
+          specifications: string | null
+          unit: string
+        }
+        Insert: {
+          category?: string
+          cost_code: string
+          created_at?: string
+          equipment_name: string
+          hourly_rate?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          schedule_edition?: string
+          specifications?: string | null
+          unit?: string
+        }
+        Update: {
+          category?: string
+          cost_code?: string
+          created_at?: string
+          equipment_name?: string
+          hourly_rate?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string | null
+          schedule_edition?: string
+          specifications?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fema_equipment_rates_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -781,6 +917,7 @@ export type Database = {
         | "eoc_commander"
         | "field_responder"
         | "finance_auditor"
+      rate_source: "fema_schedule" | "local_rate" | "unlisted_pending_fema"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -924,6 +1061,7 @@ export const Constants = {
         "field_responder",
         "finance_auditor",
       ],
+      rate_source: ["fema_schedule", "local_rate", "unlisted_pending_fema"],
     },
   },
 } as const

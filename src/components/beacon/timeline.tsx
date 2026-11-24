@@ -20,7 +20,7 @@ type Table = "field_logs" | "labor_entries" | "equipment_entries" | "material_en
 type Item = {
   id: string; table: Table; type: string; time: string; original: string; tsEdited: boolean; dept: string | null; fema: string | null;
   author: string | null; createdBy: string | null; title: string; detail: string; cost?: number; verified?: boolean;
-  editedBy: string | null; editedAt: string | null; gps?: [number, number] | null; raw: Record<string, unknown>;
+  editedBy: string | null; editedAt: string | null; pending?: boolean; gps?: [number, number] | null; raw: Record<string, unknown>;
 };
 
 export function buildFeed(d: IncidentData): Item[] {
@@ -30,7 +30,7 @@ export function buildFeed(d: IncidentData): Item[] {
   return [
     ...d.logs.map((r) => ({ ...base(r), table: "field_logs" as const, type: "ICS-214 Note", fema: r.fema_category, title: r.category, detail: r.notes + (r.location_address ? ` — ${r.location_address}` : ""), gps: r.gps_lat != null && r.gps_lng != null ? [r.gps_lat, r.gps_lng] as [number, number] : null, raw: r })),
     ...d.labor.map((r) => ({ ...base(r), table: "labor_entries" as const, type: "Labor", fema: r.fema_category, title: `${r.staff_name}${r.role_title ? `, ${r.role_title}` : ""}`, detail: `${r.regular_hours} reg + ${r.overtime_hours} OT @ $${r.hourly_rate}/hr · fringe ${r.fringe_pct}% — ${r.task_description ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
-    ...d.equipment.map((r) => ({ ...base(r), table: "equipment_entries" as const, type: "Equipment", fema: r.fema_category, title: r.equipment_name + (r.fema_code ? ` (${r.fema_code})` : ""), detail: `${r.active_hours} active / ${r.standby_hours} standby hrs @ $${r.hourly_rate}/hr · ${r.operator_name ?? ""} · ${r.work_location ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
+    ...d.equipment.map((r) => ({ ...base(r), table: "equipment_entries" as const, type: "Equipment", fema: r.fema_category, title: r.equipment_name + ((r.fema_cost_code ?? r.fema_code) ? ` (${r.fema_cost_code ?? r.fema_code}${r.schedule_edition ? ` · ed. ${r.schedule_edition}` : ""})` : ""), pending: r.rate_source === "unlisted_pending_fema", detail: `${r.active_hours} active hrs (reimbursable) / ${r.standby_hours} standby hrs (non-reimbursable) @ $${r.hourly_rate}/hr · ${r.operator_name ?? ""} · ${r.work_location ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
     ...d.materials.map((r) => ({ ...base(r), table: "material_entries" as const, type: "Materials", fema: r.fema_category, title: r.item_description, detail: `${r.quantity} × $${r.unit_cost} · ${r.vendor ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 }
@@ -99,6 +99,7 @@ export function Timeline({ data }: { data: IncidentData }) {
                 {i.author && <span>By {i.author}</span>}
                 {i.gps && <span className="flex items-center gap-1 font-mono"><MapPin className="h-3 w-3" />{i.gps[0].toFixed(5)}, {i.gps[1].toFixed(5)}</span>}
                 {i.cost != null && <span className="font-mono font-semibold">{fmtUSD(i.cost)}</span>}
+                {i.pending && <span className="rounded bg-amber px-1.5 py-0.5 font-semibold text-amber-foreground">Pending FEMA Rate Request</span>}
                 {i.verified && <span className="rounded bg-emerald px-1.5 py-0.5 font-semibold text-emerald-foreground">Rate verified</span>}
                 {i.tsEdited && <span className="rounded bg-amber-soft px-1.5 py-0.5 font-semibold">Timestamp edited · originally logged {fmtUTC(i.original)}</span>}
                 {i.editedAt && <button onClick={() => setHistory(i)} className="flex items-center gap-1 underline"><History className="h-3 w-3" />Edited by {who(i.editedBy)} {fmtLocal(i.editedAt)}</button>}

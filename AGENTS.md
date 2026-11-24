@@ -39,3 +39,6 @@ use the editor.
 - Edits to entries go through the `audit_entry_update` trigger, which preserves original timestamps and writes `record_edits`. Why: FEMA audit integrity.
 - `/app` routes are `ssr: false` and read with client `useQuery`. Why: data depends on the browser session and IndexedDB.
 - No service worker yet; manifest only. Why: avoid stale caches in preview; add a guarded vite-plugin-pwa worker if offline app-shell loading is required.
+- FEMA rates: `fema_equipment_rates.organization_id` NULL = shared reference schedule (read-only to all); city CSV imports are stored with that city's id. Why: one city's import must never change another city's rates.
+- Equipment entries snapshot `fema_cost_code`, `schedule_edition`, `rate_source` and rate at log time; `reimbursable_total` is a generated column (active hours × rate). Why: audit immutability when schedules change.
+- FEMA rates + city fleet are cached in IndexedDB via `useReferenceData` (`src/lib/rate-cache.ts`), prefetched by the app shell. Why: equipment picker must work offline.
