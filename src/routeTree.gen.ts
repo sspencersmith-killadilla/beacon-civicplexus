@@ -13,10 +13,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DemoRouteImport } from './routes/demo'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as RegisterCityRouteImport } from './routes/register-city'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppOrgRouteImport } from './routes/app/$org'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DocsManualRouteImport } from './routes/docs/manual'
+import { Route as DocsSelfHostingRouteImport } from './routes/docs/self-hosting'
 import { Route as AppOrgIndexRouteImport } from './routes/app/$org/index'
 import { Route as AppOrgLogRouteImport } from './routes/app/$org/log'
 import { Route as AppOrgSettingsRouteImport } from './routes/app/$org/settings'
@@ -42,6 +46,11 @@ const DemoRoute = DemoRouteImport.update({
   path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinRoute = JoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -61,6 +70,21 @@ const AppOrgRoute = AppOrgRouteImport.update({
   id: '/$org',
   path: '/$org',
   getParentRoute: () => AppRoute,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsManualRoute = DocsManualRouteImport.update({
+  id: '/manual',
+  path: '/manual',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsSelfHostingRoute = DocsSelfHostingRouteImport.update({
+  id: '/self-hosting',
+  path: '/self-hosting',
+  getParentRoute: () => DocsRoute,
 } as any)
 const AppOrgIndexRoute = AppOrgIndexRouteImport.update({
   id: '/',
@@ -89,10 +113,14 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/demo': typeof DemoRoute
+  '/docs': typeof DocsRouteWithChildren
   '/join': typeof JoinRoute
   '/register-city': typeof RegisterCityRoute
   '/app/$org': typeof AppOrgRouteWithChildren
+  '/docs/manual': typeof DocsManualRoute
+  '/docs/self-hosting': typeof DocsSelfHostingRoute
   '/app/': typeof AppIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
   '/app/$org/settings': typeof AppOrgSettingsRoute
   '/app/$org/': typeof AppOrgIndexRoute
@@ -104,7 +132,10 @@ export interface FileRoutesByTo {
   '/demo': typeof DemoRoute
   '/join': typeof JoinRoute
   '/register-city': typeof RegisterCityRoute
+  '/docs/manual': typeof DocsManualRoute
+  '/docs/self-hosting': typeof DocsSelfHostingRoute
   '/app': typeof AppIndexRoute
+  '/docs': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
   '/app/$org/settings': typeof AppOrgSettingsRoute
   '/app/$org': typeof AppOrgIndexRoute
@@ -116,10 +147,14 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/demo': typeof DemoRoute
+  '/docs': typeof DocsRouteWithChildren
   '/join': typeof JoinRoute
   '/register-city': typeof RegisterCityRoute
   '/app/$org': typeof AppOrgRouteWithChildren
+  '/docs/manual': typeof DocsManualRoute
+  '/docs/self-hosting': typeof DocsSelfHostingRoute
   '/app/': typeof AppIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
   '/app/$org/settings': typeof AppOrgSettingsRoute
   '/app/$org/': typeof AppOrgIndexRoute
@@ -132,10 +167,14 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/demo'
+    | '/docs'
     | '/join'
     | '/register-city'
     | '/app/$org'
+    | '/docs/manual'
+    | '/docs/self-hosting'
     | '/app/'
+    | '/docs/'
     | '/app/$org/log'
     | '/app/$org/settings'
     | '/app/$org/'
@@ -147,7 +186,10 @@ export interface FileRouteTypes {
     | '/demo'
     | '/join'
     | '/register-city'
+    | '/docs/manual'
+    | '/docs/self-hosting'
     | '/app'
+    | '/docs'
     | '/app/$org/log'
     | '/app/$org/settings'
     | '/app/$org'
@@ -158,10 +200,14 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/demo'
+    | '/docs'
     | '/join'
     | '/register-city'
     | '/app/$org'
+    | '/docs/manual'
+    | '/docs/self-hosting'
     | '/app/'
+    | '/docs/'
     | '/app/$org/log'
     | '/app/$org/settings'
     | '/app/$org/'
@@ -173,6 +219,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   DemoRoute: typeof DemoRoute
+  DocsRoute: typeof DocsRouteWithChildren
   JoinRoute: typeof JoinRoute
   RegisterCityRoute: typeof RegisterCityRoute
 }
@@ -207,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join': {
       id: '/join'
       path: '/join'
@@ -234,6 +288,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/$org'
       preLoaderRoute: typeof AppOrgRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/manual': {
+      id: '/docs/manual'
+      path: '/manual'
+      fullPath: '/docs/manual'
+      preLoaderRoute: typeof DocsManualRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/self-hosting': {
+      id: '/docs/self-hosting'
+      path: '/self-hosting'
+      fullPath: '/docs/self-hosting'
+      preLoaderRoute: typeof DocsSelfHostingRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/app/$org/': {
       id: '/app/$org/'
@@ -295,11 +370,26 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface DocsRouteChildren {
+  DocsManualRoute: typeof DocsManualRoute
+  DocsSelfHostingRoute: typeof DocsSelfHostingRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsManualRoute: DocsManualRoute,
+  DocsSelfHostingRoute: DocsSelfHostingRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   DemoRoute: DemoRoute,
+  DocsRoute: DocsRouteWithChildren,
   JoinRoute: JoinRoute,
   RegisterCityRoute: RegisterCityRoute,
 }

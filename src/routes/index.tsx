@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ClipboardList, CloudOff, FileCheck2, Building2, Camera, ShieldCheck } from "lucide-react";
+import { ClipboardList, CloudOff, FileCheck2, Building2, Camera, ShieldCheck, BookOpen, Server, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BeaconWordmark } from "@/components/beacon/logo";
 
@@ -32,6 +32,7 @@ function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <BeaconWordmark />
         <nav className="flex items-center gap-2">
+          <Button asChild variant="ghost"><Link to="/docs">Docs</Link></Button>
           <Button asChild variant="ghost"><Link to="/auth">Sign in</Link></Button>
           <Button asChild><Link to="/register-city">Register your city</Link></Button>
         </nav>
@@ -76,6 +77,51 @@ function Landing() {
         </div>
       </section>
 
+      <section className="border-t bg-card">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <p className="font-mono text-xs uppercase tracking-widest text-amber">Documentation</p>
+          <h2 className="mt-3 text-2xl font-semibold">Read the manual, or run it yourself.</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Two guides ship with Beacon: how your staff use it day to day, and how your IT team puts
+            it on infrastructure your city controls.
+          </p>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="flex flex-col rounded-lg border bg-background p-6">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-amber" />
+                <h3 className="font-semibold">User Manual</h3>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Roles and permissions, opening an incident, the offline field logger, evidence,
+                After-Action Reports and the FEMA CSV exports.
+              </p>
+              <Link
+                to="/docs/manual"
+                className="mt-5 inline-flex items-center gap-1.5 self-start text-sm font-medium text-amber hover:underline"
+              >
+                Read the user manual <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="flex flex-col rounded-lg border bg-background p-6">
+              <div className="flex items-center gap-2">
+                <Server className="h-5 w-5 text-amber" />
+                <h3 className="font-semibold">Self-Hosting Guide</h3>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Backend setup, database schema, storage and auth, then deploy to Cloudflare Workers
+                or a Node.js server — with backups and update notes.
+              </p>
+              <Link
+                to="/docs/self-hosting"
+                className="mt-5 inline-flex items-center gap-1.5 self-start text-sm font-medium text-amber hover:underline"
+              >
+                Read the self-hosting guide <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="rounded-lg border bg-primary p-8 text-primary-foreground md:p-12">
           <h2 className="text-2xl font-semibold">One mission, many cities.</h2>
@@ -89,7 +135,14 @@ function Landing() {
           </div>
         </div>
       </section>
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">Beacon · CivicPlexus open-source civic utilities</footer>
+      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
+        <p>Beacon · CivicPlexus open-source civic utilities</p>
+        <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          <Link to="/docs/manual" className="underline hover:text-foreground">User Manual</Link>
+          <Link to="/docs/self-hosting" className="underline hover:text-foreground">Self-Hosting Guide</Link>
+          <Link to="/docs" className="underline hover:text-foreground">All documentation</Link>
+        </p>
+      </footer>
     </div>
   );
 }

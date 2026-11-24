@@ -15,8 +15,9 @@ Live: https://beacon.civicplexus.org
 - One-click printable After-Action Report and four FEMA CSV exports
 
 ## Documentation
-- [User Manual](docs/USER_MANUAL.md)
-- [Self-Hosting Guide](docs/SELF_HOSTING.md)
+Both guides are readable in the app at **/docs** (linked from the home page), and live in the repo as:
+- [User Manual](docs/USER_MANUAL.md) — also at `/docs/manual`
+- [Self-Hosting Guide](docs/SELF_HOSTING.md) — also at `/docs/self-hosting`
 
 ## Quick start (development)
 ```sh

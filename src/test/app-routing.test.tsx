@@ -14,4 +14,13 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);
   });
+
+  it("matches the documentation pages instead of falling back to not found", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    for (const path of ["/docs", "/docs/manual", "/docs/self-hosting"]) {
+      const matches = router.matchRoutes(path);
+      expect(matches.at(-1)?.routeId, path).not.toBe(rootRouteId);
+    }
+  });
 });
