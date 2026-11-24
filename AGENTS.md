@@ -28,3 +28,14 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Beacon architecture rules
+- Tenancy: every operational table carries `organization_id`; RLS uses `is_org_member` / `has_org_role` / `can_read_org` security-definer helpers. Why: strict per-city isolation without recursive policies.
+- Roles live only in `organization_members.role` (per city). Why: a user can hold different roles in different cities.
+- City creation and joining go through `register_city` / `join_city` RPCs. Why: membership rows can't be self-inserted by clients.
+- Demo city is a normal org with `is_demo = true`, readable by anon via `can_read_org`. Why: "Explore demo" needs no sign-in and no writes.
+- All field entries are written through the IndexedDB queue (`src/lib/offline-queue.ts`) and upserted on `(organization_id, client_generated_id)`. Why: one path for online and offline, idempotent retries.
+- Costs are generated columns in the DB and mirrored in `src/lib/costs.ts` (tested). Why: the DB is the source of truth for exports; the UI previews totals.
+- Edits to entries go through the `audit_entry_update` trigger, which preserves original timestamps and writes `record_edits`. Why: FEMA audit integrity.
+- `/app` routes are `ssr: false` and read with client `useQuery`. Why: data depends on the browser session and IndexedDB.
+- No service worker yet; manifest only. Why: avoid stale caches in preview; add a guarded vite-plugin-pwa worker if offline app-shell loading is required.

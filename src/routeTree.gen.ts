@@ -10,33 +10,171 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as RegisterCityRouteImport } from './routes/register-city'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppOrgRouteImport } from './routes/app/$org'
+import { Route as AppOrgIndexRouteImport } from './routes/app/$org/index'
+import { Route as AppOrgLogRouteImport } from './routes/app/$org/log'
+import { Route as AppOrgSettingsRouteImport } from './routes/app/$org/settings'
+import { Route as AppOrgIncidentsIncidentIdRouteImport } from './routes/app/$org/incidents/$incidentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterCityRoute = RegisterCityRouteImport.update({
+  id: '/register-city',
+  path: '/register-city',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgRoute = AppOrgRouteImport.update({
+  id: '/$org',
+  path: '/$org',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgIndexRoute = AppOrgIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppOrgRoute,
+} as any)
+const AppOrgLogRoute = AppOrgLogRouteImport.update({
+  id: '/log',
+  path: '/log',
+  getParentRoute: () => AppOrgRoute,
+} as any)
+const AppOrgSettingsRoute = AppOrgSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppOrgRoute,
+} as any)
+const AppOrgIncidentsIncidentIdRoute =
+  AppOrgIncidentsIncidentIdRouteImport.update({
+    id: '/incidents/$incidentId',
+    path: '/incidents/$incidentId',
+    getParentRoute: () => AppOrgRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/demo': typeof DemoRoute
+  '/join': typeof JoinRoute
+  '/register-city': typeof RegisterCityRoute
+  '/app/$org': typeof AppOrgRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/$org/log': typeof AppOrgLogRoute
+  '/app/$org/settings': typeof AppOrgSettingsRoute
+  '/app/$org/': typeof AppOrgIndexRoute
+  '/app/$org/incidents/$incidentId': typeof AppOrgIncidentsIncidentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/demo': typeof DemoRoute
+  '/join': typeof JoinRoute
+  '/register-city': typeof RegisterCityRoute
+  '/app': typeof AppIndexRoute
+  '/app/$org/log': typeof AppOrgLogRoute
+  '/app/$org/settings': typeof AppOrgSettingsRoute
+  '/app/$org': typeof AppOrgIndexRoute
+  '/app/$org/incidents/$incidentId': typeof AppOrgIncidentsIncidentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/demo': typeof DemoRoute
+  '/join': typeof JoinRoute
+  '/register-city': typeof RegisterCityRoute
+  '/app/$org': typeof AppOrgRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/$org/log': typeof AppOrgLogRoute
+  '/app/$org/settings': typeof AppOrgSettingsRoute
+  '/app/$org/': typeof AppOrgIndexRoute
+  '/app/$org/incidents/$incidentId': typeof AppOrgIncidentsIncidentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/auth'
+    | '/demo'
+    | '/join'
+    | '/register-city'
+    | '/app/$org'
+    | '/app/'
+    | '/app/$org/log'
+    | '/app/$org/settings'
+    | '/app/$org/'
+    | '/app/$org/incidents/$incidentId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/demo'
+    | '/join'
+    | '/register-city'
+    | '/app'
+    | '/app/$org/log'
+    | '/app/$org/settings'
+    | '/app/$org'
+    | '/app/$org/incidents/$incidentId'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/auth'
+    | '/demo'
+    | '/join'
+    | '/register-city'
+    | '/app/$org'
+    | '/app/'
+    | '/app/$org/log'
+    | '/app/$org/settings'
+    | '/app/$org/'
+    | '/app/$org/incidents/$incidentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  DemoRoute: typeof DemoRoute
+  JoinRoute: typeof JoinRoute
+  RegisterCityRoute: typeof RegisterCityRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +186,122 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register-city': {
+      id: '/register-city'
+      path: '/register-city'
+      fullPath: '/register-city'
+      preLoaderRoute: typeof RegisterCityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/$org': {
+      id: '/app/$org'
+      path: '/$org'
+      fullPath: '/app/$org'
+      preLoaderRoute: typeof AppOrgRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/$org/': {
+      id: '/app/$org/'
+      path: '/'
+      fullPath: '/app/$org/'
+      preLoaderRoute: typeof AppOrgIndexRouteImport
+      parentRoute: typeof AppOrgRoute
+    }
+    '/app/$org/log': {
+      id: '/app/$org/log'
+      path: '/log'
+      fullPath: '/app/$org/log'
+      preLoaderRoute: typeof AppOrgLogRouteImport
+      parentRoute: typeof AppOrgRoute
+    }
+    '/app/$org/settings': {
+      id: '/app/$org/settings'
+      path: '/settings'
+      fullPath: '/app/$org/settings'
+      preLoaderRoute: typeof AppOrgSettingsRouteImport
+      parentRoute: typeof AppOrgRoute
+    }
+    '/app/$org/incidents/$incidentId': {
+      id: '/app/$org/incidents/$incidentId'
+      path: '/incidents/$incidentId'
+      fullPath: '/app/$org/incidents/$incidentId'
+      preLoaderRoute: typeof AppOrgIncidentsIncidentIdRouteImport
+      parentRoute: typeof AppOrgRoute
+    }
   }
 }
 
+interface AppOrgRouteChildren {
+  AppOrgLogRoute: typeof AppOrgLogRoute
+  AppOrgSettingsRoute: typeof AppOrgSettingsRoute
+  AppOrgIndexRoute: typeof AppOrgIndexRoute
+  AppOrgIncidentsIncidentIdRoute: typeof AppOrgIncidentsIncidentIdRoute
+}
+
+const AppOrgRouteChildren: AppOrgRouteChildren = {
+  AppOrgLogRoute: AppOrgLogRoute,
+  AppOrgSettingsRoute: AppOrgSettingsRoute,
+  AppOrgIndexRoute: AppOrgIndexRoute,
+  AppOrgIncidentsIncidentIdRoute: AppOrgIncidentsIncidentIdRoute,
+}
+
+const AppOrgRouteWithChildren =
+  AppOrgRoute._addFileChildren(AppOrgRouteChildren)
+
+interface AppRouteChildren {
+  AppOrgRoute: typeof AppOrgRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppOrgRoute: AppOrgRouteWithChildren,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  AuthRoute: AuthRoute,
+  DemoRoute: DemoRoute,
+  JoinRoute: JoinRoute,
+  RegisterCityRoute: RegisterCityRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
