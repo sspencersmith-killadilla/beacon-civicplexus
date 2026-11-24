@@ -20,10 +20,17 @@ type Table = "field_logs" | "labor_entries" | "equipment_entries" | "material_en
 type Item = {
   id: string; table: Table; type: string; time: string; original: string; tsEdited: boolean; dept: string | null; fema: string | null;
   author: string | null; createdBy: string | null; title: string; detail: string; cost?: number; verified?: boolean;
-  editedBy: string | null; editedAt: string | null; pending?: boolean; gps?: [number, number] | null; raw: Record<string, unknown>;
+  editedBy: string | null; editedAt: string | null; pending?: boolean; queued?: boolean; synced?: boolean; gps?: [number, number] | null; raw: Record<string, unknown>;
 };
 
 export function buildFeed(d: IncidentData): Item[] {
+  const withSync = (i: Omit<Item, "queued" | "synced">): Item => {
+    const cid = String(i.raw["client_generated_id"] ?? "");
+    return { ...i, queued: d.queuedIds.has(cid), synced: d.syncedIds.has(cid) };
+  };
+  return buildRaw(d).map(withSync);
+}
+function buildRaw(d: IncidentData) {
   const base = (r: { id: string; entry_time: string; original_timestamp: string; timestamp_edited: boolean; department: string | null; author_name: string | null; created_by: string | null; edited_by: string | null; edited_at: string | null }) => ({
     id: r.id, time: r.entry_time, original: r.original_timestamp, tsEdited: r.timestamp_edited, dept: r.department, author: r.author_name, createdBy: r.created_by, editedBy: r.edited_by, editedAt: r.edited_at,
   });
@@ -99,11 +106,13 @@ export function Timeline({ data }: { data: IncidentData }) {
                 {i.author && <span>By {i.author}</span>}
                 {i.gps && <span className="flex items-center gap-1 font-mono"><MapPin className="h-3 w-3" />{i.gps[0].toFixed(5)}, {i.gps[1].toFixed(5)}</span>}
                 {i.cost != null && <span className="font-mono font-semibold">{fmtUSD(i.cost)}</span>}
+                {i.queued && <span className="rounded bg-amber-soft px-1.5 py-0.5 font-semibold text-amber">Queued Offline</span>}
+                {i.synced && <span className="rounded bg-emerald px-1.5 py-0.5 font-semibold text-emerald-foreground">Synced</span>}
                 {i.pending && <span className="rounded bg-amber px-1.5 py-0.5 font-semibold text-amber-foreground">Pending FEMA Rate Request</span>}
                 {i.verified && <span className="rounded bg-emerald px-1.5 py-0.5 font-semibold text-emerald-foreground">Rate verified</span>}
                 {i.tsEdited && <span className="rounded bg-amber-soft px-1.5 py-0.5 font-semibold">Timestamp edited · originally logged {fmtUTC(i.original)}</span>}
                 {i.editedAt && <button onClick={() => setHistory(i)} className="flex items-center gap-1 underline"><History className="h-3 w-3" />Edited by {who(i.editedBy)} {fmtLocal(i.editedAt)}</button>}
-                <span className="ml-auto flex flex-wrap items-center gap-2">
+                {!i.queued && <span className="ml-auto flex flex-wrap items-center gap-2">
                   {auditor && (
                     <Select value={i.fema ?? ""} onValueChange={(v) => void patch(i, { fema_category: v })}>
                       <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="Tag CAT" /></SelectTrigger>
@@ -112,7 +121,7 @@ export function Timeline({ data }: { data: IncidentData }) {
                   )}
                   {auditor && i.cost != null && !i.verified && <Button size="sm" variant="outline" onClick={() => void patch(i, { rate_verified: true })}>Verify rate</Button>}
                   {(mine || auditor) && i.table === "field_logs" && <Button size="sm" variant="ghost" onClick={() => setEditing(i)}><Pencil className="h-3 w-3" />Edit</Button>}
-                </span>
+                </span>}
               </div>
             </li>
           );

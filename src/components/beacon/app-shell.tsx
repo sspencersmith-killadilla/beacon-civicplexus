@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { ChevronDown, CloudOff, Hand, LogOut, RefreshCw, CheckCircle2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AlertTriangle, ChevronDown, CloudOff, Hand, LogOut, RefreshCw, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useMyOrgs } from "@/lib/org";
@@ -10,24 +10,31 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { BeaconMark } from "./logo";
 import { useFieldMode } from "./field-mode";
 import { useSync } from "./sync-context";
+import { SyncDrawer } from "./sync-drawer";
 import { useOrgCtx } from "./org-context";
 import { useReferenceData } from "@/lib/rate-cache";
 
-export function SyncBanner() {
-  const { online, pending, syncing, syncNow } = useSync();
-  const ok = online && pending === 0;
+export function SyncBanner({ canSimulate }: { canSimulate: boolean }) {
+  const { online, pending, syncing, authPaused, progress, simulatedOffline } = useSync();
+  const [open, setOpen] = useState(false);
+  const ok = online && pending === 0 && !authPaused;
+  const entries = (n: number) => `${n} saved field entr${n === 1 ? "y" : "ies"}`;
+  const text = authPaused ? `Session expired — sign in again to sync your ${entries(pending)}.`
+    : progress ? `Syncing ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`
+    : ok ? "Online & Synced"
+    : online ? `${pending} entr${pending === 1 ? "y" : "ies"} waiting to sync`
+    : `Offline Mode${simulatedOffline ? " (simulated)" : ""} — ${pending} entr${pending === 1 ? "y" : "ies"} queued locally`;
   return (
-    <div className={`no-print flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium ${ok ? "bg-emerald text-emerald-foreground" : "bg-amber text-amber-foreground"}`}>
-      <span className="flex items-center gap-2">
-        {ok ? <CheckCircle2 className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}
-        {ok ? "Online & Synced" : online ? `${pending} entr${pending === 1 ? "y" : "ies"} waiting to sync` : `Offline Mode — ${pending} entr${pending === 1 ? "y" : "ies"} queued locally`}
-      </span>
-      {pending > 0 && (
-        <Button size="sm" variant="secondary" disabled={!online || syncing} onClick={() => void syncNow()}>
-          <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sync now
-        </Button>
-      )}
-    </div>
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-label="Open sync status" className={`no-print flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm font-medium ${ok ? "bg-emerald text-emerald-foreground" : "bg-amber text-amber-foreground"}`}>
+        <span className="flex min-w-0 items-center gap-2">
+          {authPaused ? <AlertTriangle className="h-4 w-4 shrink-0" /> : syncing ? <RefreshCw className="h-4 w-4 shrink-0 animate-spin" /> : ok ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <CloudOff className="h-4 w-4 shrink-0" />}
+          <span className="min-w-0">{text}</span>
+        </span>
+        <span className="shrink-0 text-xs underline underline-offset-2">{authPaused ? "Details" : pending > 0 ? "View queue" : "Details"}</span>
+      </button>
+      <SyncDrawer open={open} onOpenChange={setOpen} canSimulate={canSimulate} />
+    </>
   );
 }
 
@@ -84,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <SyncBanner />
+      <SyncBanner canSimulate={role === "city_admin" || role === "eoc_commander"} />
       {org.is_demo && (
         <div className="no-print border-b bg-amber-soft px-4 py-2 text-center text-sm">
           You're in the shared Riverbend demo city — try anything. Everyone sees the same demo, and it resets every night. <Link to="/register-city" className="font-semibold underline">Register your city</Link> to start logging.

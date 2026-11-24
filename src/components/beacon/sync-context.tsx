@@ -1,34 +1,33 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { listQueue, onQueueChange, syncAll } from "@/lib/offline-queue";
+import { getEngineState, startEngine, subscribeEngine, syncAll, type EngineState } from "@/lib/syncEngine";
+import type { SyncQueueItem } from "@/lib/offlineDb";
 
-type Ctx = { online: boolean; pending: number; syncing: boolean; syncNow: () => Promise<void> };
-const SyncCtx = createContext<Ctx>({ online: true, pending: 0, syncing: false, syncNow: async () => {} });
+type Ctx = {
+  online: boolean; networkOnline: boolean; simulatedOffline: boolean; pending: number; syncing: boolean; authPaused: boolean;
+  progress: EngineState["progress"]; items: SyncQueueItem[]; syncNow: (only?: string) => Promise<void>;
+};
+const SyncCtx = createContext<Ctx>({ online: true, networkOnline: true, simulatedOffline: false, pending: 0, syncing: false, authPaused: false, progress: null, items: [], syncNow: async () => {} });
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
-  const [online, setOnline] = useState(true);
-  const [pending, setPending] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const refresh = useCallback(() => { listQueue().then((q) => setPending(q.length)); }, []);
-  const syncNow = useCallback(async () => {
-    setSyncing(true);
-    const r = await syncAll();
-    setSyncing(false);
-    if (r.synced) { toast.success(`${r.synced} entr${r.synced === 1 ? "y" : "ies"} synced`); qc.invalidateQueries(); }
-    if (r.failed) toast.error(`${r.failed} entr${r.failed === 1 ? "y" : "ies"} could not sync yet`);
-  }, [qc]);
+  const s = useSyncExternalStore(subscribeEngine, getEngineState, getEngineState);
+  useEffect(() => { startEngine(); }, []);
+  const last = useRef(s.lastResult);
   useEffect(() => {
-    setOnline(navigator.onLine);
-    refresh();
-    const off = onQueueChange(refresh);
-    const up = () => { setOnline(true); void syncNow(); };
-    const down = () => setOnline(false);
-    window.addEventListener("online", up); window.addEventListener("offline", down);
-    if (navigator.onLine) void syncNow();
-    return () => { off(); window.removeEventListener("online", up); window.removeEventListener("offline", down); };
-  }, [refresh, syncNow]);
-  return <SyncCtx.Provider value={{ online, pending, syncing, syncNow }}>{children}</SyncCtx.Provider>;
+    if (s.lastResult === last.current || !s.lastResult) return;
+    last.current = s.lastResult;
+    const r = s.lastResult;
+    if (r.synced) { toast.success(`${r.synced} entr${r.synced === 1 ? "y" : "ies"} synced`); void qc.invalidateQueries(); }
+    if (r.failed) toast.error(`${r.failed} entr${r.failed === 1 ? "y" : "ies"} could not sync yet`);
+  }, [s.lastResult, qc]);
+  const syncNow = useCallback(async (only?: string) => { await syncAll(only ? { manual: true, only } : { manual: true }); }, []);
+  const value = useMemo<Ctx>(() => ({
+    online: s.online && !s.simulatedOffline, networkOnline: s.online, simulatedOffline: s.simulatedOffline,
+    pending: s.items.filter((i) => i.status !== "synced").length, syncing: s.running, authPaused: s.authPaused,
+    progress: s.progress, items: s.items, syncNow,
+  }), [s, syncNow]);
+  return <SyncCtx.Provider value={value}>{children}</SyncCtx.Provider>;
 }
 export const useSync = () => useContext(SyncCtx);

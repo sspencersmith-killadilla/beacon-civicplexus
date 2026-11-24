@@ -34,13 +34,14 @@ use the editor.
 - Roles live only in `organization_members.role` (per city). Why: a user can hold different roles in different cities.
 - City creation and joining go through `register_city` / `join_city` RPCs. Why: membership rows can't be self-inserted by clients.
 - Demo city is a normal org with `is_demo = true`, readable by anon via `can_read_org`. Why: "Explore demo" needs no sign-in.
-- All field entries are written through the IndexedDB queue (`src/lib/offline-queue.ts`) and upserted on `(organization_id, client_generated_id)`. Why: one path for online and offline, idempotent retries.
+- All field entries go through `src/lib/syncEngine.ts` (IndexedDB stores in `src/lib/offlineDb.ts`: sync_queue, offline_photos, reference_cache), drained FIFO and upserted on `(organization_id, client_generated_id)`; photos upload first and record `storage_path` before the row. 401/403 pauses the queue, never deletes; retry rules live in `src/lib/sync-policy.ts` (tested). Why: one idempotent path for online/offline, no lost or duplicate FEMA records.
+- Queued entries are merged into `useIncidentData` (`mergeQueued`) so timeline/KPIs show them optimistically. Why: crews see their offline work immediately.
 - Costs are generated columns in the DB and mirrored in `src/lib/costs.ts` (tested). Why: the DB is the source of truth for exports; the UI previews totals.
 - Edits to entries go through the `audit_entry_update` trigger, which preserves original timestamps and writes `record_edits`. Why: FEMA audit integrity.
 - `/app` routes are `ssr: false` and read with client `useQuery`. Why: data depends on the browser session and IndexedDB.
 - No service worker yet; manifest only. Why: avoid stale caches in preview; add a guarded vite-plugin-pwa worker if offline app-shell loading is required.
 - FEMA rates: `fema_equipment_rates.organization_id` NULL = shared reference schedule (read-only to all); city CSV imports are stored with that city's id. Why: one city's import must never change another city's rates.
 - Equipment entries snapshot `fema_cost_code`, `schedule_edition`, `rate_source` and rate at log time; `reimbursable_total` is a generated column (active hours × rate). Why: audit immutability when schedules change.
-- FEMA rates + city fleet are cached in IndexedDB via `useReferenceData` (`src/lib/rate-cache.ts`), prefetched by the app shell. Why: equipment picker must work offline.
+- FEMA rates, fleet, departments, rate cards and active incidents are cached in IndexedDB `reference_cache` via `useReferenceData` (`src/lib/rate-cache.ts`), prefetched by the app shell. Why: equipment picker must work offline.
 - Demo city is fully editable by anon via `is_demo_org` policies; the UI treats demo visitors as `city_admin` (branding/members hidden). `reset_demo_city()` runs nightly via pg_cron (08:00 UTC) and reseeds fleet from `demo_fleet_seed`. Why: public hands-on demo without sign-up, kept clean.
 - Public docs pages are SSR routes under `/docs` that render `docs/*.md` imported with `?raw` (`src/lib/docs.ts` + `src/components/beacon/markdown.tsx`). Why: the markdown files stay the single source of truth for the manual and self-hosting guide, and server rendering keeps them readable to crawlers and to print.

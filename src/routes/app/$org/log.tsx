@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Camera, MapPin, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +7,9 @@ import { useAuth } from "@/lib/auth";
 import { canLog } from "@/lib/org";
 import { FEMA_CATEGORIES, LOG_CATEGORIES } from "@/lib/fema";
 import { equipmentCost, fmtUSD, laborCost, materialCost } from "@/lib/costs";
-import { compressImage, enqueue, type QueuedPhoto } from "@/lib/offline-queue";
+import { processPhoto } from "@/lib/photoCompressor";
+import { enqueueEntry } from "@/lib/syncEngine";
+import type { EntityTable, EntityType, OfflinePhoto } from "@/lib/offlineDb";
 import { useIncidents } from "@/lib/incident-data";
 import { useReferenceData } from "@/lib/rate-cache";
 import { RATE_SOURCE_LABELS, resolveAssetRate, searchRates, type FemaRate, type FleetAsset } from "@/lib/fleet";
@@ -44,14 +45,16 @@ const num = (s: string) => Number(s) || 0;
 function Logger() {
   const { org, role } = useOrgCtx();
   const { user } = useAuth();
-  const { online, syncNow } = useSync();
+  const { online } = useSync();
   const incidents = useIncidents(org.id);
-  const active = (incidents.data ?? []).filter((i) => i.status !== "closed");
+  const ref = useReferenceData(org.id);
+  // Live list when reachable, otherwise the copy cached on this device.
+  const active = (incidents.data ?? ref.data?.incidents ?? []).filter((i) => i.status !== "closed");
   const [incidentId, setIncidentId] = useState("");
   useEffect(() => { if (!incidentId && active[0]) setIncidentId(active[0].id); }, [active, incidentId]);
-  const depts = useQuery({ queryKey: ["departments", org.id], queryFn: async () => (await supabase.from("departments").select("id, name").eq("organization_id", org.id).order("name")).data ?? [] });
-  const rates = useQuery({ queryKey: ["rates", org.id], queryFn: async () => (await supabase.from("rate_cards").select("*").eq("organization_id", org.id).order("name")).data ?? [] });
-  const deptOpts = (depts.data ?? []).map((d) => ({ v: d.name, l: d.name }));
+  const deptRows = ref.data?.departments ?? [];
+  const rateRows = ref.data?.rateCards ?? [];
+  const deptOpts = deptRows.map((d) => ({ v: d.name, l: d.name }));
   const [authorName, setAuthorName] = useState("");
   useEffect(() => {
     if (!user) return;
@@ -71,15 +74,20 @@ function Logger() {
     );
   }
 
-  const submit = async (table: "field_logs" | "labor_entries" | "equipment_entries" | "material_entries", row: Record<string, unknown>, extra?: { photos?: QueuedPhoto[]; receipt?: Blob }) => {
+  const submit: SubmitFn = async (table, row, extra) => {
     if (!incidentId) { toast.error("Choose an incident first"); return false; }
     const cid = uid();
-    const time = (row["entry_time"] as string | undefined) ?? new Date().toISOString();
-    await enqueue({
-      cid, table, queuedAt: new Date().toISOString(), ...extra,
-      row: { ...row, organization_id: org.id, incident_id: incidentId, client_generated_id: cid, entry_time: time, original_timestamp: new Date().toISOString(), timestamp_edited: !!row["timestamp_edited"], created_by: user?.id ?? null, author_name: authorName || "Demo visitor" },
-    });
-    if (navigator.onLine) await syncNow(); else toast("Saved on this device — will sync when back online");
+    const now = new Date().toISOString();
+    const time = (row["entry_time"] as string | undefined) ?? now;
+    const stamp = (p: PhotoDraft): OfflinePhoto => ({ ...p.photo, organization_id: org.id, incident_id: incidentId });
+    const photos = (extra?.photos ?? []).map(stamp);
+    const receipt = extra?.receipt ? stamp(extra.receipt) : null;
+    await enqueueEntry({
+      id: cid, organization_id: org.id, incident_id: incidentId, entity_type: ENTITY_OF[table], created_at: now,
+      photo_ids: photos.map((p) => p.id), receipt_photo_id: receipt?.id ?? null,
+      payload: { ...row, entry_time: time, original_timestamp: now, timestamp_edited: !!row["timestamp_edited"], created_by: user?.id ?? null, author_name: authorName || "Demo visitor" },
+    }, receipt ? [...photos, receipt] : photos);
+    toast(online ? "Saved — syncing now" : "Saved on this device — will sync when back online");
     return true;
   };
 
@@ -100,15 +108,32 @@ function Logger() {
           <TabsTrigger value="materials">Materials</TabsTrigger>
         </TabsList>
         <TabsContent value="note"><NoteForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
-        <TabsContent value="labor"><LaborForm deptOpts={deptOpts} rates={(rates.data ?? []).filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
-        <TabsContent value="equipment"><EquipForm orgId={org.id} deptRows={depts.data ?? []} onSubmit={submit} /></TabsContent>
+        <TabsContent value="labor"><LaborForm deptOpts={deptOpts} rates={rateRows.filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
+        <TabsContent value="equipment"><EquipForm orgId={org.id} deptRows={deptRows} onSubmit={submit} /></TabsContent>
         <TabsContent value="materials"><MaterialForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
-type SubmitFn = (t: "field_logs" | "labor_entries" | "equipment_entries" | "material_entries", row: Record<string, unknown>, extra?: { photos?: QueuedPhoto[]; receipt?: Blob }) => Promise<boolean>;
+/** A compressed photo kept on the device; org/incident are stamped at submit time. */
+type PhotoDraft = { photo: Omit<OfflinePhoto, "organization_id" | "incident_id">; url: string };
+type SubmitFn = (t: EntityTable, row: Record<string, unknown>, extra?: { photos?: PhotoDraft[]; receipt?: PhotoDraft }) => Promise<boolean>;
+const ENTITY_OF: Record<EntityTable, EntityType> = { field_logs: "field_log", labor_entries: "labor_entry", equipment_entries: "equipment_entry", material_entries: "material_entry" };
+
+async function draftPhoto(file: File, gps: { lat: number; lng: number } | null, caption: string | null): Promise<PhotoDraft> {
+  const c = await processPhoto(file, gps);
+  return {
+    photo: { id: uid(), blob: c.blob, mime_type: "image/jpeg", original_size_bytes: c.original_size_bytes, compressed_size_bytes: c.compressed_size_bytes, captured_at: c.captured_at, gps_lat: c.gps_lat, gps_lng: c.gps_lng, caption, phase: "during", storage_path: null },
+    url: URL.createObjectURL(c.blob),
+  };
+}
+/** Revokes preview object URLs when they leave the list or the form unmounts (mobile memory). */
+function useRevokeOnDrop(urls: string[]) {
+  const prev = useRef<string[]>([]);
+  useEffect(() => { prev.current.filter((u) => !urls.includes(u)).forEach((u) => URL.revokeObjectURL(u)); prev.current = urls; }, [urls]);
+  useEffect(() => () => prev.current.forEach((u) => URL.revokeObjectURL(u)), []);
+}
 type Rate = { id: string; name: string; code: string | null; hourly_rate: number; fringe_pct: number };
 const card = "grid gap-4 rounded-lg border bg-card p-4";
 
@@ -130,15 +155,16 @@ function NoteForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string }[]
   const ts = useTimestamp();
   const [f, setF] = useState({ department: "", category: LOG_CATEGORIES[0]!, address: "", notes: "", fema: "" });
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
-  const [photos, setPhotos] = useState<(QueuedPhoto & { url: string })[]>([]);
+  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  useRevokeOnDrop(useMemo(() => photos.map((p) => p.url), [photos]));
   const [busy, setBusy] = useState(false);
   const locate = () => navigator.geolocation?.getCurrentPosition((p) => setGps({ lat: p.coords.latitude, lng: p.coords.longitude }), () => toast.error("Location unavailable"), { enableHighAccuracy: true, timeout: 10000 });
   useEffect(locate, []);
   const addPhotos = async (files: FileList | null) => {
     if (!files) return;
     for (const file of Array.from(files)) {
-      const blob = await compressImage(file);
-      setPhotos((p) => [...p, { cid: uid(), blob, caption: "", phase: "during", lat: gps?.lat ?? null, lng: gps?.lng ?? null, taken_at: new Date().toISOString(), url: URL.createObjectURL(blob) }]);
+      const d = await draftPhoto(file, gps, null);
+      setPhotos((p) => [...p, d]);
     }
   };
   const save = async (e: React.FormEvent) => {
@@ -146,7 +172,7 @@ function NoteForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string }[]
     const ok = await onSubmit("field_logs", {
       entry_time: ts.iso, timestamp_edited: ts.edited, department: f.department || null, category: f.category, location_address: f.address || null,
       gps_lat: gps?.lat ?? null, gps_lng: gps?.lng ?? null, fema_category: f.fema || null, notes: f.notes,
-    }, { photos: photos.map(({ url: _u, ...p }) => p) });
+    }, { photos });
     setBusy(false);
     if (ok) { setF({ ...f, notes: "", address: "" }); setPhotos([]); ts.reset(); }
   };
@@ -173,13 +199,14 @@ function NoteForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string }[]
         </label>
         <div className="grid gap-2">
           {photos.map((p, i) => (
-            <div key={p.cid} className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border p-2">
+            <div key={p.photo.id} className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-2 rounded-md border p-2">
               <img src={p.url} alt="" className="h-16 w-16 rounded object-cover" />
               <div className="grid min-w-0 gap-1">
-                <Input placeholder="Caption" value={p.caption} onChange={(e) => setPhotos(photos.map((x, j) => (j === i ? { ...x, caption: e.target.value } : x)))} />
+                <Input placeholder="Caption" value={p.photo.caption ?? ""} onChange={(e) => setPhotos(photos.map((x, j) => (j === i ? { ...x, photo: { ...x.photo, caption: e.target.value || null } } : x)))} />
+                <span className="font-mono text-[11px] text-muted-foreground">{(p.photo.compressed_size_bytes / 1024).toFixed(0)} KB · {p.photo.gps_lat != null ? `${p.photo.gps_lat.toFixed(4)}, ${p.photo.gps_lng?.toFixed(4)}` : "no GPS"}</span>
                 <div className="flex gap-1">
                   {(["before", "during", "after"] as const).map((ph) => (
-                    <button type="button" key={ph} onClick={() => setPhotos(photos.map((x, j) => (j === i ? { ...x, phase: ph } : x)))} className={`rounded px-2 py-0.5 text-xs capitalize ${p.phase === ph ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{ph}</button>
+                    <button type="button" key={ph} onClick={() => setPhotos(photos.map((x, j) => (j === i ? { ...x, photo: { ...x.photo, phase: ph } } : x)))} className={`rounded px-2 py-0.5 text-xs capitalize ${p.photo.phase === ph ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{ph}</button>
                   ))}
                 </div>
               </div>
@@ -380,7 +407,8 @@ function MaterialForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string
   const ts = useTimestamp();
   const blank = { vendor: "", item: "", department: "", qty: "", unit: "", fema: "B" };
   const [f, setF] = useState(blank);
-  const [receipt, setReceipt] = useState<Blob | null>(null);
+  const [receipt, setReceipt] = useState<PhotoDraft | null>(null);
+  useRevokeOnDrop(useMemo(() => (receipt ? [receipt.url] : []), [receipt]));
   const total = materialCost(num(f.qty), num(f.unit));
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -398,7 +426,7 @@ function MaterialForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string
         <Field label="Unit cost $"><Input inputMode="decimal" className="font-mono" value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} /></Field>
       </div>
       <Field label="Receipt photo">
-        <Input type="file" accept="image/*" capture="environment" onChange={async (e) => { const file = e.target.files?.[0]; setReceipt(file ? await compressImage(file) : null); }} />
+        <Input type="file" accept="image/*" capture="environment" onChange={async (e) => { const file = e.target.files?.[0]; setReceipt(file ? await draftPhoto(file, null, "Receipt") : null); }} />
       </Field>
       <TotalRow label="Total" value={total} />
       <Button type="submit" size="lg">Log purchase</Button>

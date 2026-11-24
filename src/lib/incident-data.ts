@@ -1,4 +1,8 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSync } from "@/components/beacon/sync-context";
+import { equipmentCost, laborCost, materialCost } from "./costs";
+import type { SyncQueueItem } from "./offlineDb";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useIncidents(orgId: string | undefined) {
@@ -11,7 +15,7 @@ export function useIncidents(orgId: string | undefined) {
   });
 }
 
-export function useIncidentData(incidentId: string | undefined) {
+function useServerIncidentData(incidentId: string | undefined) {
   return useQuery({
     queryKey: ["incident-data", incidentId], enabled: !!incidentId,
     queryFn: async () => {
@@ -30,7 +34,38 @@ export function useIncidentData(incidentId: string | undefined) {
     },
   });
 }
-export type IncidentData = NonNullable<ReturnType<typeof useIncidentData>["data"]>;
+type ServerData = NonNullable<ReturnType<typeof useServerIncidentData>["data"]>;
+export type IncidentData = ServerData & { queuedIds: Set<string>; syncedIds: Set<string> };
+
+/** Optimistic view: entries still in this device's queue appear alongside server rows until the server copy arrives. */
+export function mergeQueued(d: ServerData, items: SyncQueueItem[]): IncidentData {
+  const onServer = new Set([...d.logs, ...d.labor, ...d.equipment, ...d.materials].map((r) => r.client_generated_id));
+  const mine = items.filter((i) => i.incident_id === d.incident.id);
+  const queued = mine.filter((i) => i.status !== "synced" && !onServer.has(i.id));
+  const n = (v: unknown) => Number(v ?? 0);
+  const row = (i: SyncQueueItem, extra: Record<string, unknown> = {}) => ({
+    edited_by: null, edited_at: null, rate_verified: false, created_at: i.created_at, department: null, fema_category: null,
+    ...i.payload, ...extra, id: `queued:${i.id}`, client_generated_id: i.id, organization_id: i.organization_id, incident_id: i.incident_id,
+  }) as never;
+  const of = (t: SyncQueueItem["entity_type"]) => queued.filter((i) => i.entity_type === t);
+  const byTime = <T extends { entry_time: string }>(xs: T[]) => xs.sort((a, b) => a.entry_time.localeCompare(b.entry_time));
+  return {
+    ...d,
+    logs: byTime([...d.logs, ...of("field_log").map((i) => row(i))]),
+    labor: byTime([...d.labor, ...of("labor_entry").map((i) => row(i, { total_cost: laborCost(n(i.payload["regular_hours"]), n(i.payload["overtime_hours"]), n(i.payload["hourly_rate"]), n(i.payload["fringe_pct"])) }))]),
+    equipment: byTime([...d.equipment, ...of("equipment_entry").map((i) => { const t = equipmentCost(n(i.payload["active_hours"]), n(i.payload["hourly_rate"])); return row(i, { total_cost: t, reimbursable_total: t }); })]),
+    materials: byTime([...d.materials, ...of("material_entry").map((i) => row(i, { total_cost: materialCost(n(i.payload["quantity"]), n(i.payload["unit_cost"])) }))]),
+    queuedIds: new Set(queued.map((i) => i.id)),
+    syncedIds: new Set(mine.filter((i) => i.status === "synced").map((i) => i.id)),
+  };
+}
+
+export function useIncidentData(incidentId: string | undefined) {
+  const q = useServerIncidentData(incidentId);
+  const { items } = useSync();
+  const data = useMemo(() => (q.data ? mergeQueued(q.data, items) : undefined), [q.data, items]);
+  return { ...q, data };
+}
 
 export function summarize(d: IncidentData) {
   const n = (v: unknown) => Number(v ?? 0);
