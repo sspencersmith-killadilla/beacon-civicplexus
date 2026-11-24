@@ -201,6 +201,10 @@ export type Database = {
           rate_source: string | null
           rate_verified: boolean
           reimbursable_total: number | null
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           schedule_edition: string | null
           standby_hours: number
           timestamp_edited: boolean
@@ -231,6 +235,10 @@ export type Database = {
           rate_source?: string | null
           rate_verified?: boolean
           reimbursable_total?: number | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           schedule_edition?: string | null
           standby_hours?: number
           timestamp_edited?: boolean
@@ -261,6 +269,10 @@ export type Database = {
           rate_source?: string | null
           rate_verified?: boolean
           reimbursable_total?: number | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           schedule_edition?: string | null
           standby_hours?: number
           timestamp_edited?: boolean
@@ -446,6 +458,10 @@ export type Database = {
           notes: string
           organization_id: string
           original_timestamp: string
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           timestamp_edited: boolean
         }
         Insert: {
@@ -467,6 +483,10 @@ export type Database = {
           notes?: string
           organization_id: string
           original_timestamp?: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           timestamp_edited?: boolean
         }
         Update: {
@@ -488,6 +508,10 @@ export type Database = {
           notes?: string
           organization_id?: string
           original_timestamp?: string
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           timestamp_edited?: boolean
         }
         Relationships: [
@@ -557,6 +581,50 @@ export type Database = {
           },
         ]
       }
+      join_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          organization_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_entries: {
         Row: {
           author_name: string | null
@@ -577,6 +645,10 @@ export type Database = {
           overtime_hours: number
           rate_verified: boolean
           regular_hours: number
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           role_title: string | null
           staff_name: string
           task_description: string | null
@@ -602,6 +674,10 @@ export type Database = {
           overtime_hours?: number
           rate_verified?: boolean
           regular_hours?: number
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           role_title?: string | null
           staff_name: string
           task_description?: string | null
@@ -627,6 +703,10 @@ export type Database = {
           overtime_hours?: number
           rate_verified?: boolean
           regular_hours?: number
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           role_title?: string | null
           staff_name?: string
           task_description?: string | null
@@ -669,6 +749,10 @@ export type Database = {
           quantity: number
           rate_verified: boolean
           receipt_path: string | null
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           timestamp_edited: boolean
           total_cost: number | null
           unit_cost: number
@@ -692,6 +776,10 @@ export type Database = {
           quantity?: number
           rate_verified?: boolean
           receipt_path?: string | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           timestamp_edited?: boolean
           total_cost?: number | null
           unit_cost?: number
@@ -715,6 +803,10 @@ export type Database = {
           quantity?: number
           rate_verified?: boolean
           receipt_path?: string | null
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           timestamp_edited?: boolean
           total_cost?: number | null
           unit_cost?: number
@@ -730,6 +822,59 @@ export type Database = {
           },
           {
             foreignKeyName: "material_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["org_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          organization_id: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_invites_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -898,7 +1043,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: {
+        Args: { _full_name: string; _token: string }
+        Returns: string
+      }
       can_read_org: { Args: { _org: string }; Returns: boolean }
+      decide_join_request: {
+        Args: {
+          _approve: boolean
+          _department?: string
+          _id: string
+          _role?: Database["public"]["Enums"]["org_role"]
+        }
+        Returns: undefined
+      }
+      get_invite: {
+        Args: { _token: string }
+        Returns: {
+          department: string
+          email: string
+          expires_at: string
+          organization_name: string
+          organization_state: string
+          role: Database["public"]["Enums"]["org_role"]
+          status: string
+        }[]
+      }
       has_org_role: {
         Args: {
           _org: string
@@ -922,6 +1092,7 @@ export type Database = {
         Returns: string
       }
       reset_demo_city: { Args: never; Returns: undefined }
+      rotate_join_code: { Args: { _org: string }; Returns: string }
       seed_winter_scenario: {
         Args: { _org: string; _user: string }
         Returns: string

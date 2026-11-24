@@ -39,7 +39,10 @@ use the editor.
 - Costs are generated columns in the DB and mirrored in `src/lib/costs.ts` (tested). Why: the DB is the source of truth for exports; the UI previews totals.
 - Edits to entries go through the `audit_entry_update` trigger, which preserves original timestamps and writes `record_edits`. Why: FEMA audit integrity.
 - `/app` routes are `ssr: false` and read with client `useQuery`. Why: data depends on the browser session and IndexedDB.
-- No service worker yet; manifest only. Why: avoid stale caches in preview; add a guarded vite-plugin-pwa worker if offline app-shell loading is required.
+- Offline app shell: vite-plugin-pwa generateSW (`/sw.js`, output pinned to dist/client) registered only by `src/lib/pwa-register.ts`, which refuses dev, iframes and Lovable preview hosts; pages NetworkFirst. Why: cold-start offline without stale previews.
+- Staff access: `org_invites` (email-bound, expiring, role+department) accepted via `accept_invite`; join codes create `join_requests` an admin approves via `decide_join_request`; `rotate_join_code` replaces leaked codes. Why: nobody joins a city without an admin decision.
+- Entry review: `review_status` on the four entry tables, enforced by `guard_entry_review` trigger (reviewers only; approved rows immutable except FEMA tag/rate verification; reopen to edit). Why: approved FEMA records can't drift.
+- Claim exports (CSVs + PDF packet) are filing-ready only when `claimReadiness` (`src/lib/claim.ts`, tested) passes; otherwise they download as DRAFT. Why: no unverified rates in a FEMA filing.
 - FEMA rates: `fema_equipment_rates.organization_id` NULL = shared reference schedule (read-only to all); city CSV imports are stored with that city's id. Why: one city's import must never change another city's rates.
 - Equipment entries snapshot `fema_cost_code`, `schedule_edition`, `rate_source` and rate at log time; `reimbursable_total` is a generated column (active hours × rate). Why: audit immutability when schedules change.
 - FEMA rates, fleet, departments, rate cards and active incidents are cached in IndexedDB `reference_cache` via `useReferenceData` (`src/lib/rate-cache.ts`), prefetched by the app shell. Why: equipment picker must work offline.

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { ROLE_LABELS } from "@/lib/fema";
 import { useOrgCtx } from "@/components/beacon/org-context";
 import { FleetManager } from "@/components/beacon/fleet-manager";
+import { AccessManager } from "@/components/beacon/access-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,6 @@ function Settings() {
   const [b, setB] = useState({ name: org.name, state: org.state, logo_url: org.logo_url ?? "", primary_color: org.primary_color });
   const depts = useQuery({ queryKey: ["departments", org.id], queryFn: async () => (await supabase.from("departments").select("*").eq("organization_id", org.id).order("name")).data ?? [] });
   const rates = useQuery({ queryKey: ["rates", org.id], queryFn: async () => (await supabase.from("rate_cards").select("*").eq("organization_id", org.id).order("kind").order("name")).data ?? [] });
-  const members = useQuery({ queryKey: ["members", org.id], queryFn: async () => (await supabase.from("organization_members").select("*").eq("organization_id", org.id).order("created_at")).data ?? [] });
   const [dept, setDept] = useState("");
   const [rate, setRate] = useState({ kind: "labor", name: "", code: "", hourly_rate: "", fringe_pct: "" });
 
@@ -48,25 +48,7 @@ function Settings() {
         </div>
       </section>}
 
-      {!org.is_demo && <section className={sec}>
-        <h2 className="font-semibold">Invite staff</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Share this join code. New members join as Field Responders; change their role below.</p>
-        <div className="mt-4 rounded-md bg-muted p-4 text-center font-mono text-3xl font-bold tracking-[0.3em]">{org.join_code}</div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">They sign up, then open <span className="font-mono">/join</span> and enter the code.</p>
-        <h3 className="mt-6 text-sm font-semibold">Members</h3>
-        <ul className="mt-2 divide-y">
-          {(members.data ?? []).map((m) => (
-            <li key={m.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 py-2">
-              <span className="min-w-0"><span className="block truncate text-sm font-medium">{m.full_name || m.email}</span><span className="block truncate text-xs text-muted-foreground">{m.email}</span></span>
-              <Select value={m.role} disabled={m.user_id === user?.id} onValueChange={async (v) => { const { error } = await supabase.from("organization_members").update({ role: v as typeof m.role }).eq("id", m.id); done(error, [["members", org.id]], "Role updated"); }}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                <SelectContent>{Object.entries(ROLE_LABELS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-              </Select>
-              <Button size="icon" variant="ghost" aria-label="Remove member" disabled={m.user_id === user?.id} onClick={async () => { const { error } = await supabase.from("organization_members").delete().eq("id", m.id); done(error, [["members", org.id]], "Member removed"); }}><Trash2 className="h-4 w-4" /></Button>
-            </li>
-          ))}
-        </ul>
-      </section>}
+      {!org.is_demo && <AccessManager />}
 
       <section className={sec}>
         <h2 className="font-semibold">Departments</h2>

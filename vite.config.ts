@@ -8,6 +8,7 @@
 // hosting already compresses at the edge.
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   tanstackStart: {
@@ -15,4 +16,37 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  plugins: [
+    // Offline app shell. Registered only by src/lib/pwa-register.ts (never in dev or Lovable previews).
+    VitePWA({
+      strategies: "generateSW",
+      filename: "sw.js",
+      registerType: "autoUpdate",
+      injectRegister: null,
+      manifest: false, // public/manifest.webmanifest is the manifest
+      devOptions: { enabled: false },
+      // The plugin runs once per build environment; pin output and precache to the browser bundle.
+      outDir: "dist/client",
+      workbox: {
+        globDirectory: "dist/client",
+        navigateFallback: null,
+        globPatterns: ["**/*.{js,css,svg,woff2,webmanifest}"],
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            // Pages: always try the network first; fall back to the last copy when offline.
+            urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/~oauth") && !url.pathname.startsWith("/api/") && !url.pathname.startsWith("/lovable/"),
+            handler: "NetworkFirst",
+            options: { cacheName: "beacon-pages", networkTimeoutSeconds: 4, expiration: { maxEntries: 60, maxAgeSeconds: 30 * 86400 } },
+          },
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/assets/"),
+            handler: "CacheFirst",
+            options: { cacheName: "beacon-assets", expiration: { maxEntries: 300, maxAgeSeconds: 60 * 86400 } },
+          },
+        ],
+      },
+    }),
+  ],
 });

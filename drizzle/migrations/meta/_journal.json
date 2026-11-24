@@ -29,6 +29,20 @@
       "when": 1795545781492,
       "tag": "0003_enable_pg_cron",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795547745975,
+      "tag": "0004_golive_invites_approvals_locks",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795548087694,
+      "tag": "0005_tighten_function_execute",
+      "breakpoints": true
     }
   ]
 }

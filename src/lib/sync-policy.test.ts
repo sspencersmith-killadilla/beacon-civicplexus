@@ -29,3 +29,16 @@ describe("photo resize", () => {
     expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 });
   });
 });
+
+import { isRefusedHost } from "./pwa-register";
+describe("offline app shell host guard", () => {
+  it("never registers in Lovable previews", () => {
+    expect(isRefusedHost("id-preview--8ea0815f-aa8f-4dcf-8bf2-0c25ded6500a.lovable.app")).toBe(true);
+    expect(isRefusedHost("preview-v2--beacon.lovable.app")).toBe(true);
+    expect(isRefusedHost("abc.lovableproject.com")).toBe(true);
+  });
+  it("registers on the published and custom domains", () => {
+    expect(isRefusedHost("beacon.civicplexus.org")).toBe(false);
+    expect(isRefusedHost("beacon-civicplexus.lovable.app")).toBe(false);
+  });
+});

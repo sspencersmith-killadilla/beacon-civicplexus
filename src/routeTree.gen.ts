@@ -21,6 +21,7 @@ import { Route as AppOrgRouteImport } from './routes/app/$org'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsManualRouteImport } from './routes/docs/manual'
 import { Route as DocsSelfHostingRouteImport } from './routes/docs/self-hosting'
+import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as AppOrgIndexRouteImport } from './routes/app/$org/index'
 import { Route as AppOrgLogRouteImport } from './routes/app/$org/log'
 import { Route as AppOrgSettingsRouteImport } from './routes/app/$org/settings'
@@ -86,6 +87,11 @@ const DocsSelfHostingRoute = DocsSelfHostingRouteImport.update({
   path: '/self-hosting',
   getParentRoute: () => DocsRoute,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppOrgIndexRoute = AppOrgIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/app/$org': typeof AppOrgRouteWithChildren
   '/docs/manual': typeof DocsManualRoute
   '/docs/self-hosting': typeof DocsSelfHostingRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/register-city': typeof RegisterCityRoute
   '/docs/manual': typeof DocsManualRoute
   '/docs/self-hosting': typeof DocsSelfHostingRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app': typeof AppIndexRoute
   '/docs': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/app/$org': typeof AppOrgRouteWithChildren
   '/docs/manual': typeof DocsManualRoute
   '/docs/self-hosting': typeof DocsSelfHostingRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/app/$org/log': typeof AppOrgLogRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/app/$org'
     | '/docs/manual'
     | '/docs/self-hosting'
+    | '/invite/$token'
     | '/app/'
     | '/docs/'
     | '/app/$org/log'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/register-city'
     | '/docs/manual'
     | '/docs/self-hosting'
+    | '/invite/$token'
     | '/app'
     | '/docs'
     | '/app/$org/log'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/app/$org'
     | '/docs/manual'
     | '/docs/self-hosting'
+    | '/invite/$token'
     | '/app/'
     | '/docs/'
     | '/app/$org/log'
@@ -222,6 +234,7 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRouteWithChildren
   JoinRoute: typeof JoinRoute
   RegisterCityRoute: typeof RegisterCityRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsSelfHostingRouteImport
       parentRoute: typeof DocsRoute
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/$org/': {
       id: '/app/$org/'
       path: '/'
@@ -392,6 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRouteWithChildren,
   JoinRoute: JoinRoute,
   RegisterCityRoute: RegisterCityRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
