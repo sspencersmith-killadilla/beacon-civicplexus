@@ -123,6 +123,30 @@ export type Database = {
           },
         ]
       }
+      demo_fleet_seed: {
+        Row: {
+          asset_number: string
+          cost_code: string | null
+          department_name: string | null
+          nickname: string
+          rate_source: Database["public"]["Enums"]["rate_source"]
+        }
+        Insert: {
+          asset_number: string
+          cost_code?: string | null
+          department_name?: string | null
+          nickname: string
+          rate_source?: Database["public"]["Enums"]["rate_source"]
+        }
+        Update: {
+          asset_number?: string
+          cost_code?: string | null
+          department_name?: string | null
+          nickname?: string
+          rate_source?: Database["public"]["Enums"]["rate_source"]
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           created_at: string
@@ -897,6 +921,7 @@ export type Database = {
         }
         Returns: string
       }
+      reset_demo_city: { Args: never; Returns: undefined }
       seed_winter_scenario: {
         Args: { _org: string; _user: string }
         Returns: string

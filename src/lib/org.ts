@@ -34,6 +34,8 @@ export function useOrg(slug: string) {
         const { data: m } = await supabase.from("organization_members").select("role").eq("organization_id", org.id).eq("user_id", user.id).maybeSingle();
         role = (m?.role as OrgRole) ?? null;
       }
+      // Demo city: every visitor gets full access; it resets nightly.
+      if (!role && org.is_demo) role = "city_admin";
       return { org, role };
     },
   });

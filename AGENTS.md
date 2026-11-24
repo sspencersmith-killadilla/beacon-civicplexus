@@ -33,7 +33,7 @@ use the editor.
 - Tenancy: every operational table carries `organization_id`; RLS uses `is_org_member` / `has_org_role` / `can_read_org` security-definer helpers. Why: strict per-city isolation without recursive policies.
 - Roles live only in `organization_members.role` (per city). Why: a user can hold different roles in different cities.
 - City creation and joining go through `register_city` / `join_city` RPCs. Why: membership rows can't be self-inserted by clients.
-- Demo city is a normal org with `is_demo = true`, readable by anon via `can_read_org`. Why: "Explore demo" needs no sign-in and no writes.
+- Demo city is a normal org with `is_demo = true`, readable by anon via `can_read_org`. Why: "Explore demo" needs no sign-in.
 - All field entries are written through the IndexedDB queue (`src/lib/offline-queue.ts`) and upserted on `(organization_id, client_generated_id)`. Why: one path for online and offline, idempotent retries.
 - Costs are generated columns in the DB and mirrored in `src/lib/costs.ts` (tested). Why: the DB is the source of truth for exports; the UI previews totals.
 - Edits to entries go through the `audit_entry_update` trigger, which preserves original timestamps and writes `record_edits`. Why: FEMA audit integrity.
@@ -42,3 +42,4 @@ use the editor.
 - FEMA rates: `fema_equipment_rates.organization_id` NULL = shared reference schedule (read-only to all); city CSV imports are stored with that city's id. Why: one city's import must never change another city's rates.
 - Equipment entries snapshot `fema_cost_code`, `schedule_edition`, `rate_source` and rate at log time; `reimbursable_total` is a generated column (active hours × rate). Why: audit immutability when schedules change.
 - FEMA rates + city fleet are cached in IndexedDB via `useReferenceData` (`src/lib/rate-cache.ts`), prefetched by the app shell. Why: equipment picker must work offline.
+- Demo city is fully editable by anon via `is_demo_org` policies; the UI treats demo visitors as `city_admin` (branding/members hidden). `reset_demo_city()` runs nightly via pg_cron (08:00 UTC) and reseeds fleet from `demo_fleet_seed`. Why: public hands-on demo without sign-up, kept clean.

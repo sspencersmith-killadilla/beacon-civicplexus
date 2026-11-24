@@ -77,7 +77,7 @@ function Logger() {
     const time = (row["entry_time"] as string | undefined) ?? new Date().toISOString();
     await enqueue({
       cid, table, queuedAt: new Date().toISOString(), ...extra,
-      row: { ...row, organization_id: org.id, incident_id: incidentId, client_generated_id: cid, entry_time: time, original_timestamp: new Date().toISOString(), timestamp_edited: !!row["timestamp_edited"], created_by: user!.id, author_name: authorName },
+      row: { ...row, organization_id: org.id, incident_id: incidentId, client_generated_id: cid, entry_time: time, original_timestamp: new Date().toISOString(), timestamp_edited: !!row["timestamp_edited"], created_by: user?.id ?? null, author_name: authorName || "Demo visitor" },
     });
     if (navigator.onLine) await syncNow(); else toast("Saved on this device — will sync when back online");
     return true;

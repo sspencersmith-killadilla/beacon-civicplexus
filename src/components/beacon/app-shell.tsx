@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {org.logo_url && <img src={org.logo_url} alt="" className="h-7 w-7 rounded-full object-cover" />}
                 <span className="min-w-0 text-left">
                   <span className="block truncate font-semibold leading-tight">{org.name}</span>
-                  <span className="block text-xs text-muted-foreground">{org.state}{role ? ` · ${ROLE_LABELS[role]}` : org.is_demo ? " · Demo (read-only)" : ""}</span>
+                  <span className="block text-xs text-muted-foreground">{org.state}{org.is_demo ? " · Demo (full access)" : role ? ` · ${ROLE_LABELS[role]}` : ""}</span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0" />
               </button>
@@ -85,9 +85,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <SyncBanner />
-      {org.is_demo && !role && (
+      {org.is_demo && (
         <div className="no-print border-b bg-amber-soft px-4 py-2 text-center text-sm">
-          You're viewing the Riverbend demo city (read-only). <Link to="/register-city" className="font-semibold underline">Register your city</Link> to start logging.
+          You're in the shared Riverbend demo city — try anything. Everyone sees the same demo, and it resets every night. <Link to="/register-city" className="font-semibold underline">Register your city</Link> to start logging.
         </div>
       )}
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>

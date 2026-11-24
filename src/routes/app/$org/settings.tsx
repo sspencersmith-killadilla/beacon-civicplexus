@@ -37,7 +37,7 @@ function Settings() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
-      <section className={sec}>
+      {!org.is_demo && <section className={sec}>
         <h2 className="font-semibold">City branding</h2>
         <div className="mt-4 grid gap-3">
           <div className="grid gap-1.5"><Label>City name</Label><Input value={b.name} onChange={(e) => setB({ ...b, name: e.target.value })} /></div>
@@ -46,9 +46,9 @@ function Settings() {
           <div className="grid gap-1.5"><Label>Accent color</Label><div className="flex gap-2"><input type="color" className="h-10 w-14 rounded border" value={b.primary_color} onChange={(e) => setB({ ...b, primary_color: e.target.value })} /><Input className="font-mono" value={b.primary_color} onChange={(e) => setB({ ...b, primary_color: e.target.value })} /></div></div>
           <Button onClick={async () => { const { error } = await supabase.from("organizations").update({ ...b, logo_url: b.logo_url || null }).eq("id", org.id); done(error, [["org"], ["my-orgs"]]); }}>Save branding</Button>
         </div>
-      </section>
+      </section>}
 
-      <section className={sec}>
+      {!org.is_demo && <section className={sec}>
         <h2 className="font-semibold">Invite staff</h2>
         <p className="mt-1 text-sm text-muted-foreground">Share this join code. New members join as Field Responders; change their role below.</p>
         <div className="mt-4 rounded-md bg-muted p-4 text-center font-mono text-3xl font-bold tracking-[0.3em]">{org.join_code}</div>
@@ -66,7 +66,7 @@ function Settings() {
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       <section className={sec}>
         <h2 className="font-semibold">Departments</h2>

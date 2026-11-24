@@ -15,6 +15,20 @@
       "when": 1795544955651,
       "tag": "0001_fema_rates_and_fleet",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795545766589,
+      "tag": "0002_editable_demo_city",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795545781492,
+      "tag": "0003_enable_pg_cron",
+      "breakpoints": true
     }
   ]
 }
