@@ -1,29 +1,33 @@
-# Welcome to your Lovable project
+# Beacon — CivicPlexus
 
-This project was built with [Lovable](https://lovable.dev).
+**Field-ready emergency logging and FEMA-compliant documentation for local governments.**
 
-## Build with Lovable
+Beacon is an open-source, multi-tenant Emergency Operations and FEMA Public Assistance documentation app. Any city can register its own isolated workspace, run incidents, log field activity offline, and export reimbursement-ready packets and After-Action Reports.
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Live: https://beacon.civicplexus.org
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+## Features
+- Multi-city workspaces with strict row-level isolation and four roles (City Admin, EOC Commander, Field Responder, Finance / FEMA Auditor)
+- Offline-first Field Logger: ICS-214 notes with GPS and photos, force account labor, equipment, and materials
+- FEMA Schedule of Equipment Rates lookup and per-city fleet presets (cached offline)
+- Chronological timeline with filters and a tamper-evident audit trail
+- Photo Evidence Vault with Before / During / After tagging
+- One-click printable After-Action Report and four FEMA CSV exports
 
-## Development
+## Documentation
+- [User Manual](docs/USER_MANUAL.md)
+- [Self-Hosting Guide](docs/SELF_HOSTING.md)
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
+## Quick start (development)
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install        # or npm install
+cp .env.example .env   # fill in your backend URL and publishable key
+bun run dev        # http://localhost:8080
+bun run test       # cost and rate rule tests
 ```
 
-## Built with
+## Tech stack
+React 19, TanStack Start/Router, Tailwind CSS v4, shadcn/ui, Supabase (Postgres, Auth, Storage), IndexedDB (idb-keyval) for the offline queue. Builds to Cloudflare Workers by default.
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+## License
+[MIT](LICENSE) © CivicPlexus contributors
