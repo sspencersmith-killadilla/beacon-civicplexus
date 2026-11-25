@@ -30,6 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 ## Beacon architecture rules
+- Work-account OAuth uses the generated Lovable helper directly from sign-in buttons, returns to public `/auth`, and restores a validated local destination only after session hydration. Why: managed Google/Microsoft sign-in works in preview and avoids protected callback failures.
 - Tenancy: every operational table carries `organization_id`; RLS uses `is_org_member` / `has_org_role` / `can_read_org` security-definer helpers. Why: strict per-city isolation without recursive policies.
 - Roles live only in `organization_members.role` (per city). Why: a user can hold different roles in different cities.
 - City creation and joining go through `register_city` / `join_city` RPCs. Why: membership rows can't be self-inserted by clients.

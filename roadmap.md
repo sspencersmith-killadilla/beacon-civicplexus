@@ -5,5 +5,5 @@
 - [x] FEMA summary-record CSVs (labor, equipment, materials, contract work) by project
 - [x] Incident map of geotagged notes, photos and project sites
 - [x] Department fringe benefit profiles auto-fill labor fringe
-- [ ] Work-account sign-in (Microsoft / Google Workspace) — waits on which provider cities use and their tenant details
+- [x] Work-account sign-in with Microsoft and Google Workspace (managed providers)
 - [ ] Invite emails — waits on a sender email domain

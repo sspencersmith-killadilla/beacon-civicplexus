@@ -66,12 +66,15 @@ In Auth settings:
 - Enable **Email** sign-in. Keep **Confirm email** on and configure SMTP (self-hosted: `SMTP_*` variables) so confirmation emails are delivered.
 - Set **Site URL** to your public address (e.g. `https://beacon.example.gov`) and add it plus `/auth` to **Redirect URLs**.
 
-**Google sign-in:** the hosted Beacon uses Lovable's managed sign-in broker (`src/integrations/lovable`), which is not available when self-hosting. Either:
-- remove the **Continue with Google** and **Continue with Lovable** buttons in `src/routes/auth.tsx`, or
-- configure Google in your Supabase Auth settings with your own Google OAuth client and replace the `lovable.auth.signInWithOAuth("google", …)` call with:
+**Google and Microsoft sign-in:** the hosted Beacon uses Lovable's managed sign-in broker (`src/integrations/lovable`), which is not available when self-hosting. Either:
+- remove the **Continue with Google**, **Continue with Microsoft** and **Continue with Lovable** buttons in `src/routes/auth.tsx`, or
+- configure Google and Azure (Microsoft Entra ID) in your Supabase Auth settings with your own OAuth clients, remove the Lovable button, and replace the managed sign-in call with the appropriate provider:
   ```ts
   await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + "/auth" } });
+  // Microsoft uses the "azure" provider on self-hosted Supabase:
+  await supabase.auth.signInWithOAuth({ provider: "azure", options: { scopes: "email", redirectTo: window.location.origin + "/auth" } });
   ```
+  Run only the call for the selected provider. Preserve the intended destination in session storage and navigate there only after an authenticated session is available.
 
 ## 4. Configure the web app
 ```sh

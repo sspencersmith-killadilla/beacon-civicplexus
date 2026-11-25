@@ -10,7 +10,7 @@ Beacon helps a city document everything that happens during an emergency — dec
 On the home page choose **Explore live demo city**. Riverbend (Demo) is read-only and contains a complete winter-freeze incident with notes, labor, equipment, materials and a finished After-Action Report.
 
 ### 1.2 Create an account
-Choose **Sign in**. You can continue with Google, with a Lovable account, or with email and password. Email accounts must be confirmed from the email you receive before first sign-in.
+Choose **Sign in**. You can continue with Google (including Google Workspace), Microsoft (including work or school accounts), a Lovable account, or email and password. Email accounts must be confirmed from the email you receive before first sign-in. Use the same email address your city invited. Work-account sign-in does not automatically grant access to a city; you still need an invitation or an approved join request.
 
 ### 1.3 Register your city
 Choose **Register your city**, enter the city name, two-letter state and your name. You become the **City Admin**. Beacon creates:
