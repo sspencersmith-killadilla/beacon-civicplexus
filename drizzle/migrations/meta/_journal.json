@@ -43,6 +43,13 @@
       "when": 1795548087694,
       "tag": "0005_tighten_function_execute",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795618353814,
+      "tag": "0006_projects_contracts_crews_fringe",
+      "breakpoints": true
     }
   ]
 }

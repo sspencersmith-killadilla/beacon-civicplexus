@@ -1,9 +1,9 @@
-# Roadmap — go-live must-haves
-- [x] 1. App opens offline (installable, guarded service worker) — published site only
-- [~] 2. Invites with role, department and expiry — links done; email delivery waits on a sender domain
-- [x] 3. Rotate join code + admin approval of join requests
-- [x] 4. Security scan and fixes
-- [x] 5. Block claim exports until rates verified and entries approved
-- [x] 6. FEMA PDF packet with embedded photos
-- [x] 7. Edit history on labor/equipment/materials
-- [x] 8. Entry approval workflow; approved entries locked
+# Roadmap — operational readiness
+- [x] Project sites / worksheets per incident, tagged from the Field Logger
+- [x] Foreman daily crew ticket (fans out to labor + equipment)
+- [x] Contract, rental and mutual-aid cost entries; mutual-aid agency on labor
+- [x] FEMA summary-record CSVs (labor, equipment, materials, contract work) by project
+- [x] Incident map of geotagged notes, photos and project sites
+- [x] Department fringe benefit profiles auto-fill labor fringe
+- [ ] Work-account sign-in (Microsoft / Google Workspace) — waits on which provider cities use and their tenant details
+- [ ] Invite emails — waits on a sender email domain

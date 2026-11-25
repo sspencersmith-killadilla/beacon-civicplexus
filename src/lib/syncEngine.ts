@@ -59,7 +59,7 @@ async function syncOne(item: SyncQueueItem) {
   const row: Record<string, unknown> = { ...item.payload, organization_id: item.organization_id, incident_id: item.incident_id, client_generated_id: item.id };
   if (item.receipt_photo_id) {
     const r = await getPhoto(item.receipt_photo_id);
-    if (r) row["receipt_path"] = await uploadPhoto(r);
+    if (r) row[table === "contract_entries" ? "invoice_path" : "receipt_path"] = await uploadPhoto(r);
   }
   // Phase 2: records (idempotent on organization_id + client_generated_id)
   const up = await supabase.from(table).upsert(row as never, { onConflict: "organization_id,client_generated_id", ignoreDuplicates: true });

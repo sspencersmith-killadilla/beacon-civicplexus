@@ -12,6 +12,9 @@ import { Timeline } from "@/components/beacon/timeline";
 import { EvidenceGallery } from "@/components/beacon/evidence";
 import { AfterActionReport } from "@/components/beacon/aar";
 import { ExportCenter } from "@/components/beacon/exports";
+import { ProjectsPanel } from "@/components/beacon/projects";
+import { lazy, Suspense } from "react";
+const IncidentMap = lazy(() => import("@/components/beacon/incident-map"));
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,13 +55,17 @@ function IncidentPage() {
       </div>
       <div className="no-print"><KpiCards data={d} /></div>
       <Tabs defaultValue="timeline">
-        <TabsList className="no-print">
+        <TabsList className="no-print h-auto flex-wrap">
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+          <TabsTrigger value="map">Map</TabsTrigger>
           <TabsTrigger value="evidence">Evidence Vault</TabsTrigger>
           <TabsTrigger value="aar">After-Action Report</TabsTrigger>
           <TabsTrigger value="exports">FEMA Exports</TabsTrigger>
         </TabsList>
         <TabsContent value="timeline"><Timeline data={d} /></TabsContent>
+        <TabsContent value="projects"><ProjectsPanel data={d} /></TabsContent>
+        <TabsContent value="map"><Suspense fallback={<p className="text-muted-foreground">Loading map…</p>}><IncidentMap data={d} /></Suspense></TabsContent>
         <TabsContent value="evidence"><EvidenceGallery data={d} /></TabsContent>
         <TabsContent value="aar"><AfterActionReport data={d} /></TabsContent>
         <TabsContent value="exports"><ExportCenter data={d} /></TabsContent>

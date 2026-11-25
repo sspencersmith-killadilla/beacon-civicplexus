@@ -2,7 +2,7 @@
 // (the /app tree is ssr:false); the DB opens lazily on first use.
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
-export type EntityType = "field_log" | "labor_entry" | "equipment_entry" | "material_entry";
+export type EntityType = "field_log" | "labor_entry" | "equipment_entry" | "material_entry" | "contract_entry";
 export type QueueStatus = "pending" | "syncing" | "failed" | "synced";
 
 export const ENTITY_TABLE = {
@@ -10,11 +10,12 @@ export const ENTITY_TABLE = {
   labor_entry: "labor_entries",
   equipment_entry: "equipment_entries",
   material_entry: "material_entries",
+  contract_entry: "contract_entries",
 } as const satisfies Record<EntityType, string>;
 export type EntityTable = (typeof ENTITY_TABLE)[EntityType];
 
 export const ENTITY_LABEL: Record<EntityType, string> = {
-  field_log: "ICS-214 Note", labor_entry: "Labor", equipment_entry: "Equipment", material_entry: "Materials",
+  field_log: "ICS-214 Note", labor_entry: "Labor", equipment_entry: "Equipment", material_entry: "Materials", contract_entry: "Contract / Mutual Aid",
 };
 
 export type SyncQueueItem = {
@@ -57,6 +58,7 @@ export type ReferenceCache = {
   departments: unknown[];
   rate_cards: unknown[];
   incidents: unknown[];
+  projects?: unknown[];
   cached_at: string;
 };
 

@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Table = "field_logs" | "labor_entries" | "equipment_entries" | "material_entries";
+type Table = "field_logs" | "labor_entries" | "equipment_entries" | "material_entries" | "contract_entries";
 type Item = {
   id: string; table: Table; type: string; time: string; original: string; tsEdited: boolean; dept: string | null; fema: string | null;
   author: string | null; createdBy: string | null; title: string; detail: string; cost?: number; verified?: boolean;
@@ -38,6 +38,7 @@ function buildRaw(d: IncidentData) {
     ...d.logs.map((r) => ({ ...base(r), table: "field_logs" as const, type: "ICS-214 Note", fema: r.fema_category, title: r.category, detail: r.notes + (r.location_address ? ` — ${r.location_address}` : ""), gps: r.gps_lat != null && r.gps_lng != null ? [r.gps_lat, r.gps_lng] as [number, number] : null, raw: r })),
     ...d.labor.map((r) => ({ ...base(r), table: "labor_entries" as const, type: "Labor", fema: r.fema_category, title: `${r.staff_name}${r.role_title ? `, ${r.role_title}` : ""}`, detail: `${r.regular_hours} reg + ${r.overtime_hours} OT @ $${r.hourly_rate}/hr · fringe ${r.fringe_pct}% — ${r.task_description ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
     ...d.equipment.map((r) => ({ ...base(r), table: "equipment_entries" as const, type: "Equipment", fema: r.fema_category, title: r.equipment_name + ((r.fema_cost_code ?? r.fema_code) ? ` (${r.fema_cost_code ?? r.fema_code}${r.schedule_edition ? ` · ed. ${r.schedule_edition}` : ""})` : ""), pending: r.rate_source === "unlisted_pending_fema", detail: `${r.active_hours} active hrs (reimbursable) / ${r.standby_hours} standby hrs (non-reimbursable) @ $${r.hourly_rate}/hr · ${r.operator_name ?? ""} · ${r.work_location ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
+    ...d.contracts.map((r) => ({ ...base(r), table: "contract_entries" as const, type: "Contract / Aid", fema: r.fema_category, title: `${r.vendor} — ${r.description}`, detail: `${r.kind === "mutual_aid" ? "Mutual aid" : r.kind === "rental" ? "Rental" : "Contractor"} · ${r.quantity} ${r.unit ?? ""} × $${r.unit_cost}${r.contract_number ? ` · contract ${r.contract_number}` : ""}${r.ticket_number ? ` · ticket ${r.ticket_number}` : ""}${r.procurement_method ? ` · ${r.procurement_method}` : ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
     ...d.materials.map((r) => ({ ...base(r), table: "material_entries" as const, type: "Materials", fema: r.fema_category, title: r.item_description, detail: `${r.quantity} × $${r.unit_cost} · ${r.vendor ?? ""}`, cost: Number(r.total_cost), verified: r.rate_verified, raw: r })),
   ].sort((a, b) => a.time.localeCompare(b.time));
 }
@@ -81,7 +82,7 @@ export function Timeline({ data }: { data: IncidentData }) {
     <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-3 md:grid-cols-6">
         <F label="Department" value={flt.dept} onChange={(v) => setFlt({ ...flt, dept: v })} opts={uniq(feed.map((i) => i.dept))} />
-        <F label="Entry type" value={flt.type} onChange={(v) => setFlt({ ...flt, type: v })} opts={["ICS-214 Note", "Labor", "Equipment", "Materials"]} />
+        <F label="Entry type" value={flt.type} onChange={(v) => setFlt({ ...flt, type: v })} opts={["ICS-214 Note", "Labor", "Equipment", "Materials", "Contract / Aid"]} />
         <F label="FEMA category" value={flt.fema} onChange={(v) => setFlt({ ...flt, fema: v })} opts={FEMA_CATEGORIES.map((c) => c.code)} />
         <F label="Author" value={flt.author} onChange={(v) => setFlt({ ...flt, author: v })} opts={uniq(feed.map((i) => i.author))} />
         <div className="grid gap-1"><Label className="text-xs">From</Label><Input type="date" className="h-9" value={flt.from} onChange={(e) => setFlt({ ...flt, from: e.target.value })} /></div>
@@ -146,6 +147,7 @@ const EDIT_FIELDS: Record<Table, FieldDef[]> = {
   field_logs: [{ k: "category", l: "Category", kind: "category" }, { k: "location_address", l: "Location" }, { k: "notes", l: "Notes", kind: "area" }],
   labor_entries: [{ k: "staff_name", l: "Staff member" }, { k: "role_title", l: "Role / title" }, { k: "regular_hours", l: "Regular hrs", kind: "num" }, { k: "overtime_hours", l: "OT hrs", kind: "num" }, { k: "hourly_rate", l: "Hourly rate $", kind: "num" }, { k: "fringe_pct", l: "Fringe %", kind: "num" }, { k: "task_description", l: "Task description" }],
   equipment_entries: [{ k: "equipment_name", l: "Equipment" }, { k: "operator_name", l: "Operator" }, { k: "active_hours", l: "Active hrs", kind: "num" }, { k: "standby_hours", l: "Standby hrs", kind: "num" }, { k: "hourly_rate", l: "Hourly rate $", kind: "num" }, { k: "work_location", l: "Work location" }],
+  contract_entries: [{ k: "vendor", l: "Vendor / agency" }, { k: "description", l: "Description" }, { k: "contract_number", l: "Contract #" }, { k: "po_number", l: "PO #" }, { k: "ticket_number", l: "Ticket #" }, { k: "quantity", l: "Quantity", kind: "num" }, { k: "unit_cost", l: "Unit cost $", kind: "num" }],
   material_entries: [{ k: "vendor", l: "Vendor" }, { k: "item_description", l: "Item description" }, { k: "quantity", l: "Quantity", kind: "num" }, { k: "unit_cost", l: "Unit cost $", kind: "num" }],
 };
 

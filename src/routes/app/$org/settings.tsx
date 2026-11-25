@@ -9,6 +9,7 @@ import { ROLE_LABELS } from "@/lib/fema";
 import { useOrgCtx } from "@/components/beacon/org-context";
 import { FleetManager } from "@/components/beacon/fleet-manager";
 import { AccessManager } from "@/components/beacon/access-manager";
+import { FringeProfiles } from "@/components/beacon/fringe-profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,8 @@ function Settings() {
           <Input required value={dept} onChange={(e) => setDept(e.target.value)} placeholder="New department" /><Button type="submit">Add</Button>
         </form>
       </section>
+
+      <FringeProfiles orgId={org.id} canEdit={role === "city_admin"} />
 
       <section className={sec}>
         <h2 className="font-semibold">Standard rate tables</h2>

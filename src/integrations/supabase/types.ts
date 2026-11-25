@@ -123,6 +123,133 @@ export type Database = {
           },
         ]
       }
+      contract_entries: {
+        Row: {
+          author_name: string | null
+          client_generated_id: string
+          contract_number: string | null
+          created_at: string
+          created_by: string | null
+          department: string | null
+          description: string
+          edited_at: string | null
+          edited_by: string | null
+          entry_time: string
+          fema_category: Database["public"]["Enums"]["fema_category"]
+          id: string
+          incident_id: string
+          invoice_path: string | null
+          kind: string
+          organization_id: string
+          original_timestamp: string
+          po_number: string | null
+          procurement_method: string | null
+          project_id: string | null
+          quantity: number
+          rate_verified: boolean
+          review_note: string | null
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          ticket_number: string | null
+          timestamp_edited: boolean
+          total_cost: number | null
+          unit: string | null
+          unit_cost: number
+          vendor: string
+        }
+        Insert: {
+          author_name?: string | null
+          client_generated_id: string
+          contract_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description: string
+          edited_at?: string | null
+          edited_by?: string | null
+          entry_time?: string
+          fema_category?: Database["public"]["Enums"]["fema_category"]
+          id?: string
+          incident_id: string
+          invoice_path?: string | null
+          kind?: string
+          organization_id: string
+          original_timestamp?: string
+          po_number?: string | null
+          procurement_method?: string | null
+          project_id?: string | null
+          quantity?: number
+          rate_verified?: boolean
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          ticket_number?: string | null
+          timestamp_edited?: boolean
+          total_cost?: number | null
+          unit?: string | null
+          unit_cost?: number
+          vendor: string
+        }
+        Update: {
+          author_name?: string | null
+          client_generated_id?: string
+          contract_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string
+          edited_at?: string | null
+          edited_by?: string | null
+          entry_time?: string
+          fema_category?: Database["public"]["Enums"]["fema_category"]
+          id?: string
+          incident_id?: string
+          invoice_path?: string | null
+          kind?: string
+          organization_id?: string
+          original_timestamp?: string
+          po_number?: string | null
+          procurement_method?: string | null
+          project_id?: string | null
+          quantity?: number
+          rate_verified?: boolean
+          review_note?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          ticket_number?: string | null
+          timestamp_edited?: boolean
+          total_cost?: number | null
+          unit?: string | null
+          unit_cost?: number
+          vendor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_entries_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "incident_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demo_fleet_seed: {
         Row: {
           asset_number: string
@@ -150,21 +277,36 @@ export type Database = {
       departments: {
         Row: {
           created_at: string
+          fica_pct: number
           id: string
+          medical_pct: number
           name: string
           organization_id: string
+          other_fringe_pct: number
+          retirement_pct: number
+          workers_comp_pct: number
         }
         Insert: {
           created_at?: string
+          fica_pct?: number
           id?: string
+          medical_pct?: number
           name: string
           organization_id: string
+          other_fringe_pct?: number
+          retirement_pct?: number
+          workers_comp_pct?: number
         }
         Update: {
           created_at?: string
+          fica_pct?: number
           id?: string
+          medical_pct?: number
           name?: string
           organization_id?: string
+          other_fringe_pct?: number
+          retirement_pct?: number
+          workers_comp_pct?: number
         }
         Relationships: [
           {
@@ -184,6 +326,7 @@ export type Database = {
           client_generated_id: string
           created_at: string
           created_by: string | null
+          crew_ticket_id: string | null
           department: string | null
           edited_at: string | null
           edited_by: string | null
@@ -198,6 +341,7 @@ export type Database = {
           operator_name: string | null
           organization_id: string
           original_timestamp: string
+          project_id: string | null
           rate_source: string | null
           rate_verified: boolean
           reimbursable_total: number | null
@@ -218,6 +362,7 @@ export type Database = {
           client_generated_id: string
           created_at?: string
           created_by?: string | null
+          crew_ticket_id?: string | null
           department?: string | null
           edited_at?: string | null
           edited_by?: string | null
@@ -232,6 +377,7 @@ export type Database = {
           operator_name?: string | null
           organization_id: string
           original_timestamp?: string
+          project_id?: string | null
           rate_source?: string | null
           rate_verified?: boolean
           reimbursable_total?: number | null
@@ -252,6 +398,7 @@ export type Database = {
           client_generated_id?: string
           created_at?: string
           created_by?: string | null
+          crew_ticket_id?: string | null
           department?: string | null
           edited_at?: string | null
           edited_by?: string | null
@@ -266,6 +413,7 @@ export type Database = {
           operator_name?: string | null
           organization_id?: string
           original_timestamp?: string
+          project_id?: string | null
           rate_source?: string | null
           rate_verified?: boolean
           reimbursable_total?: number | null
@@ -299,6 +447,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "incident_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -458,6 +613,7 @@ export type Database = {
           notes: string
           organization_id: string
           original_timestamp: string
+          project_id: string | null
           review_note: string | null
           review_status: string
           reviewed_at: string | null
@@ -483,6 +639,7 @@ export type Database = {
           notes?: string
           organization_id: string
           original_timestamp?: string
+          project_id?: string | null
           review_note?: string | null
           review_status?: string
           reviewed_at?: string | null
@@ -508,6 +665,7 @@ export type Database = {
           notes?: string
           organization_id?: string
           original_timestamp?: string
+          project_id?: string | null
           review_note?: string | null
           review_status?: string
           reviewed_at?: string | null
@@ -524,6 +682,70 @@ export type Database = {
           },
           {
             foreignKeyName: "field_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "incident_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incident_projects: {
+        Row: {
+          created_at: string
+          facility: string | null
+          fema_category: Database["public"]["Enums"]["fema_category"] | null
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          incident_id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          project_number: string | null
+        }
+        Insert: {
+          created_at?: string
+          facility?: string | null
+          fema_category?: Database["public"]["Enums"]["fema_category"] | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          incident_id: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          project_number?: string | null
+        }
+        Update: {
+          created_at?: string
+          facility?: string | null
+          fema_category?: Database["public"]["Enums"]["fema_category"] | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          id?: string
+          incident_id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          project_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_projects_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_projects_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -631,6 +853,7 @@ export type Database = {
           client_generated_id: string
           created_at: string
           created_by: string | null
+          crew_ticket_id: string | null
           department: string | null
           edited_at: string | null
           edited_by: string | null
@@ -640,9 +863,11 @@ export type Database = {
           hourly_rate: number
           id: string
           incident_id: string
+          mutual_aid_agency: string | null
           organization_id: string
           original_timestamp: string
           overtime_hours: number
+          project_id: string | null
           rate_verified: boolean
           regular_hours: number
           review_note: string | null
@@ -660,6 +885,7 @@ export type Database = {
           client_generated_id: string
           created_at?: string
           created_by?: string | null
+          crew_ticket_id?: string | null
           department?: string | null
           edited_at?: string | null
           edited_by?: string | null
@@ -669,9 +895,11 @@ export type Database = {
           hourly_rate?: number
           id?: string
           incident_id: string
+          mutual_aid_agency?: string | null
           organization_id: string
           original_timestamp?: string
           overtime_hours?: number
+          project_id?: string | null
           rate_verified?: boolean
           regular_hours?: number
           review_note?: string | null
@@ -689,6 +917,7 @@ export type Database = {
           client_generated_id?: string
           created_at?: string
           created_by?: string | null
+          crew_ticket_id?: string | null
           department?: string | null
           edited_at?: string | null
           edited_by?: string | null
@@ -698,9 +927,11 @@ export type Database = {
           hourly_rate?: number
           id?: string
           incident_id?: string
+          mutual_aid_agency?: string | null
           organization_id?: string
           original_timestamp?: string
           overtime_hours?: number
+          project_id?: string | null
           rate_verified?: boolean
           regular_hours?: number
           review_note?: string | null
@@ -728,6 +959,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "labor_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "incident_projects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       material_entries: {
@@ -746,6 +984,7 @@ export type Database = {
           item_description: string
           organization_id: string
           original_timestamp: string
+          project_id: string | null
           quantity: number
           rate_verified: boolean
           receipt_path: string | null
@@ -773,6 +1012,7 @@ export type Database = {
           item_description: string
           organization_id: string
           original_timestamp?: string
+          project_id?: string | null
           quantity?: number
           rate_verified?: boolean
           receipt_path?: string | null
@@ -800,6 +1040,7 @@ export type Database = {
           item_description?: string
           organization_id?: string
           original_timestamp?: string
+          project_id?: string | null
           quantity?: number
           rate_verified?: boolean
           receipt_path?: string | null
@@ -825,6 +1066,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "incident_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1093,6 +1341,7 @@ export type Database = {
       }
       reset_demo_city: { Args: never; Returns: undefined }
       rotate_join_code: { Args: { _org: string }; Returns: string }
+      seed_demo_extras: { Args: { _org: string }; Returns: undefined }
       seed_winter_scenario: {
         Args: { _org: string; _user: string }
         Returns: string

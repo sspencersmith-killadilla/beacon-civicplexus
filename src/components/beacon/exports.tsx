@@ -6,6 +6,7 @@ import { useOrgCtx } from "./org-context";
 import { downloadCSV, toCSV } from "@/lib/csv";
 import { femaLabel } from "@/lib/fema";
 import { RATE_SOURCE_LABELS } from "@/lib/fleet";
+import { femaSummaries } from "@/lib/fema-summaries";
 import type { IncidentData } from "@/lib/incident-data";
 import { Button } from "@/components/ui/button";
 
@@ -31,9 +32,16 @@ export function ExportCenter({ data }: { data: IncidentData }) {
     { name: "force_account_labor.csv", n: data.labor.length, run: () => toCSV(data.labor.map((r) => ({ ...meta(r), staff_name: r.staff_name, role_title: r.role_title, department: r.department, fema_category: femaLabel(r.fema_category), regular_hours: r.regular_hours, overtime_hours: r.overtime_hours, hourly_rate: r.hourly_rate, fringe_pct: r.fringe_pct, total_cost: r.total_cost, task_description: r.task_description, rate_verified: r.rate_verified, logged_by: r.author_name })), ["incident", "declaration", "entry_time_utc", "staff_name", "role_title", "department", "fema_category", "regular_hours", "overtime_hours", "hourly_rate", "fringe_pct", "total_cost", "task_description", "rate_verified", "logged_by", "original_timestamp_utc", "timestamp_edited"]) },
     { name: "force_account_equipment.csv", n: data.equipment.length, run: () => toCSV(data.equipment.map((r) => ({ ...meta(r), equipment_name: r.equipment_name, "FEMA Cost Code": r.fema_cost_code ?? r.fema_code ?? "", "Schedule Edition": r.schedule_edition ?? "", "Rate Source": RATE_SOURCE_LABELS[r.rate_source ?? ""] ?? r.rate_source ?? "", operator_name: r.operator_name, department: r.department, fema_category: femaLabel(r.fema_category), "Active Hours": r.active_hours, "Standby Hours (Non-Reimbursable)": r.standby_hours, "Hourly Rate": r.hourly_rate, "Eligible Reimbursable Total": r.reimbursable_total ?? r.total_cost, work_location: r.work_location, rate_verified: r.rate_verified })), ["incident", "declaration", "entry_time_utc", "equipment_name", "FEMA Cost Code", "Schedule Edition", "Rate Source", "operator_name", "department", "fema_category", "Active Hours", "Standby Hours (Non-Reimbursable)", "Hourly Rate", "Eligible Reimbursable Total", "work_location", "rate_verified", "original_timestamp_utc", "timestamp_edited"]) },
     { name: "materials_and_purchases.csv", n: data.materials.length, run: () => toCSV(data.materials.map((r) => ({ ...meta(r), vendor: r.vendor, item_description: r.item_description, department: r.department, quantity: r.quantity, unit_cost: r.unit_cost, total_cost: r.total_cost, fema_category: femaLabel(r.fema_category), has_receipt: !!r.receipt_path })), ["incident", "declaration", "entry_time_utc", "vendor", "item_description", "department", "quantity", "unit_cost", "total_cost", "fema_category", "has_receipt", "original_timestamp_utc", "timestamp_edited"]) },
+    { name: "contracts_and_mutual_aid.csv", n: data.contracts.length, run: () => femaSummaries(data, org.name).contracts },
     { name: "ics214_activity_log.csv", n: data.logs.length, run: () => toCSV(data.logs.map((r) => ({ ...meta(r), department: r.department, category: r.category, notes: r.notes, location_address: r.location_address, gps_lat: r.gps_lat, gps_lng: r.gps_lng, fema_category: r.fema_category ? femaLabel(r.fema_category) : "", author: r.author_name })), ["incident", "declaration", "entry_time_utc", "department", "category", "notes", "location_address", "gps_lat", "gps_lng", "fema_category", "author", "original_timestamp_utc", "timestamp_edited"]) },
   ];
-  const claim = new Set(["force_account_labor.csv", "force_account_equipment.csv", "materials_and_purchases.csv"]);
+  const claim = new Set(["force_account_labor.csv", "force_account_equipment.csv", "materials_and_purchases.csv", "contracts_and_mutual_aid.csv"]);
+  const summaries = [
+    { name: "fema_labor_summary_record.csv", label: "Force Account Labor Summary Record", n: data.labor.length, key: "labor" as const },
+    { name: "fema_equipment_summary_record.csv", label: "Force Account Equipment Summary Record", n: data.equipment.length, key: "equipment" as const },
+    { name: "fema_materials_summary_record.csv", label: "Materials Summary Record", n: data.materials.length, key: "materials" as const },
+    { name: "fema_contract_work_summary_record.csv", label: "Contract Work Summary Record", n: data.contracts.length, key: "contracts" as const },
+  ];
   return (
     <div className="grid gap-3">
       {ready ? (
@@ -48,6 +56,18 @@ export function ExportCenter({ data }: { data: IncidentData }) {
       <div className="flex items-center justify-between rounded-lg border bg-card p-4">
         <div><div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4" />FEMA reimbursement packet (PDF)</div><div className="text-xs text-muted-foreground">Summary, all cost and ICS-214 entries, and every photo and receipt embedded with time and GPS.</div></div>
         <Button variant={ready ? "default" : "outline"} disabled={pdfBusy} onClick={() => void pdf()}><Download className="h-4 w-4" />{pdfBusy ? "Building…" : ready ? "Download PDF" : "Download draft PDF"}</Button>
+      </div>
+      <div className="rounded-lg border bg-card p-4">
+        <div className="text-sm font-semibold">FEMA summary records</div>
+        <p className="text-xs text-muted-foreground">Columns follow FEMA's Public Assistance summary record forms, grouped by project site, ready to transfer onto the official forms or Grants Portal. Check against the current form edition your state requires.</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {summaries.map((f) => (
+            <div key={f.name} className="flex items-center justify-between gap-2 rounded-md border p-3">
+              <div className="min-w-0"><div className="truncate text-sm font-medium">{f.label}</div><div className="text-xs text-muted-foreground">{f.n} rows</div></div>
+              <Button size="sm" variant="outline" onClick={() => downloadCSV(fileName(f.name), femaSummaries(data, org.name)[f.key])}><Download className="h-4 w-4" />{ready ? "CSV" : "Draft"}</Button>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
       {files.map((f) => (

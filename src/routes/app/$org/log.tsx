@@ -11,7 +11,8 @@ import { processPhoto } from "@/lib/photoCompressor";
 import { enqueueEntry } from "@/lib/syncEngine";
 import type { EntityTable, EntityType, OfflinePhoto } from "@/lib/offlineDb";
 import { useIncidents } from "@/lib/incident-data";
-import { useReferenceData } from "@/lib/rate-cache";
+import { deptFringe, useReferenceData, type Dept } from "@/lib/rate-cache";
+import { buildCrewEntries, type CrewEquipment, type CrewMember } from "@/lib/crew";
 import { RATE_SOURCE_LABELS, resolveAssetRate, searchRates, type FemaRate, type FleetAsset } from "@/lib/fleet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useOrgCtx } from "@/components/beacon/org-context";
@@ -51,6 +52,9 @@ function Logger() {
   // Live list when reachable, otherwise the copy cached on this device.
   const active = (incidents.data ?? ref.data?.incidents ?? []).filter((i) => i.status !== "closed");
   const [incidentId, setIncidentId] = useState("");
+  const [projectId, setProjectId] = useState("");
+  useEffect(() => setProjectId(""), [incidentId]);
+  const projects = (ref.data?.projects ?? []).filter((p) => p.incident_id === incidentId);
   useEffect(() => { if (!incidentId && active[0]) setIncidentId(active[0].id); }, [active, incidentId]);
   const deptRows = ref.data?.departments ?? [];
   const rateRows = ref.data?.rateCards ?? [];
@@ -85,7 +89,7 @@ function Logger() {
     await enqueueEntry({
       id: cid, organization_id: org.id, incident_id: incidentId, entity_type: ENTITY_OF[table], created_at: now,
       photo_ids: photos.map((p) => p.id), receipt_photo_id: receipt?.id ?? null,
-      payload: { ...row, entry_time: time, original_timestamp: now, timestamp_edited: !!row["timestamp_edited"], created_by: user?.id ?? null, author_name: authorName || "Demo visitor" },
+      payload: { project_id: projectId || null, ...row, entry_time: time, original_timestamp: now, timestamp_edited: !!row["timestamp_edited"], created_by: user?.id ?? null, author_name: authorName || "Demo visitor" },
     }, receipt ? [...photos, receipt] : photos);
     toast(online ? "Saved — syncing now" : "Saved on this device — will sync when back online");
     return true;
@@ -100,17 +104,26 @@ function Logger() {
       <Field label="Incident">
         <Pick value={incidentId} onChange={setIncidentId} options={active.map((i) => ({ v: i.id, l: i.name }))} placeholder="No active incidents" />
       </Field>
+      {projects.length > 0 && (
+        <Field label="Project site / worksheet (optional)">
+          <Pick value={projectId || "none"} onChange={(v) => setProjectId(v === "none" ? "" : v)} options={[{ v: "none", l: "No project" }, ...projects.map((p) => ({ v: p.id, l: `${p.project_number ? `${p.project_number} — ` : ""}${p.name}` }))]} />
+        </Field>
+      )}
       <Tabs defaultValue="note">
-        <TabsList className="grid h-auto w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-3 md:grid-cols-6">
           <TabsTrigger value="note">Field Note</TabsTrigger>
           <TabsTrigger value="labor">Labor</TabsTrigger>
           <TabsTrigger value="equipment">Equipment</TabsTrigger>
           <TabsTrigger value="materials">Materials</TabsTrigger>
+          <TabsTrigger value="crew">Crew Ticket</TabsTrigger>
+          <TabsTrigger value="contract">Contract / Aid</TabsTrigger>
         </TabsList>
         <TabsContent value="note"><NoteForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
-        <TabsContent value="labor"><LaborForm deptOpts={deptOpts} rates={rateRows.filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
+        <TabsContent value="labor"><LaborForm deptRows={deptRows} rates={rateRows.filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
         <TabsContent value="equipment"><EquipForm orgId={org.id} deptRows={deptRows} onSubmit={submit} /></TabsContent>
         <TabsContent value="materials"><MaterialForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
+        <TabsContent value="crew"><CrewForm orgId={org.id} deptRows={deptRows} rates={rateRows.filter((r) => r.kind === "labor")} onSubmit={submit} /></TabsContent>
+        <TabsContent value="contract"><ContractForm deptOpts={deptOpts} onSubmit={submit} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -119,7 +132,7 @@ function Logger() {
 /** A compressed photo kept on the device; org/incident are stamped at submit time. */
 type PhotoDraft = { photo: Omit<OfflinePhoto, "organization_id" | "incident_id">; url: string };
 type SubmitFn = (t: EntityTable, row: Record<string, unknown>, extra?: { photos?: PhotoDraft[]; receipt?: PhotoDraft }) => Promise<boolean>;
-const ENTITY_OF: Record<EntityTable, EntityType> = { field_logs: "field_log", labor_entries: "labor_entry", equipment_entries: "equipment_entry", material_entries: "material_entry" };
+const ENTITY_OF: Record<EntityTable, EntityType> = { field_logs: "field_log", labor_entries: "labor_entry", equipment_entries: "equipment_entry", material_entries: "material_entry", contract_entries: "contract_entry" };
 
 async function draftPhoto(file: File, gps: { lat: number; lng: number } | null, caption: string | null): Promise<PhotoDraft> {
   const c = await processPhoto(file, gps);
@@ -230,14 +243,15 @@ function RatePicker({ rates, onPick }: { rates: Rate[]; onPick: (r: Rate) => voi
   );
 }
 
-function LaborForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: string }[]; rates: Rate[]; onSubmit: SubmitFn }) {
+function LaborForm({ deptRows, rates, onSubmit }: { deptRows: Dept[]; rates: Rate[]; onSubmit: SubmitFn }) {
   const ts = useTimestamp();
-  const blank = { staff_name: "", role_title: "", department: "", fema: "B", reg: "", ot: "", rate: "", fringe: "", task: "" };
+  const deptOpts = deptRows.map((d) => ({ v: d.name, l: d.name }));
+  const blank = { staff_name: "", role_title: "", department: "", fema: "B", reg: "", ot: "", rate: "", fringe: "", task: "", agency: "" };
   const [f, setF] = useState(blank);
   const total = useMemo(() => laborCost(num(f.reg), num(f.ot), num(f.rate), num(f.fringe)), [f]);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (await onSubmit("labor_entries", { entry_time: ts.iso, timestamp_edited: ts.edited, staff_name: f.staff_name, role_title: f.role_title || null, department: f.department || null, fema_category: f.fema, regular_hours: num(f.reg), overtime_hours: num(f.ot), hourly_rate: num(f.rate), fringe_pct: num(f.fringe), task_description: f.task || null })) { setF({ ...blank, department: f.department, fema: f.fema }); ts.reset(); }
+    if (await onSubmit("labor_entries", { entry_time: ts.iso, timestamp_edited: ts.edited, staff_name: f.staff_name, role_title: f.role_title || null, department: f.department || null, fema_category: f.fema, regular_hours: num(f.reg), overtime_hours: num(f.ot), hourly_rate: num(f.rate), fringe_pct: num(f.fringe), task_description: f.task || null, mutual_aid_agency: f.agency || null })) { setF({ ...blank, department: f.department, fema: f.fema, fringe: f.fringe }); ts.reset(); }
   };
   return (
     <form onSubmit={save} className={card}>
@@ -245,10 +259,12 @@ function LaborForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: st
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Staff member"><Input required value={f.staff_name} onChange={(e) => setF({ ...f, staff_name: e.target.value })} /></Field>
         <Field label="Role / title"><Input value={f.role_title} onChange={(e) => setF({ ...f, role_title: e.target.value })} /></Field>
-        <Field label="Department"><Pick value={f.department} onChange={(v) => setF({ ...f, department: v })} options={deptOpts} /></Field>
+        <Field label="Department"><Pick value={f.department} onChange={(v) => { const fr = deptFringe(deptRows.find((d) => d.name === v)); setF({ ...f, department: v, fringe: fr ? String(fr) : f.fringe }); }} options={deptOpts} /></Field>
         <Field label="FEMA work category"><Pick value={f.fema} onChange={(v) => setF({ ...f, fema: v })} options={femaOpts} /></Field>
+        <Field label="Mutual aid agency (if not city staff)"><Input placeholder="e.g. Cedar Park Public Works" value={f.agency} onChange={(e) => setF({ ...f, agency: e.target.value })} /></Field>
       </div>
-      <RatePicker rates={rates} onPick={(r) => setF({ ...f, role_title: f.role_title || r.name, rate: String(r.hourly_rate), fringe: String(r.fringe_pct) })} />
+      {f.department && deptFringe(deptRows.find((d) => d.name === f.department)) > 0 && <p className="-mt-2 text-xs text-muted-foreground">Fringe filled from the {f.department} fringe profile set by your City Admin.</p>}
+      <RatePicker rates={rates} onPick={(r) => setF({ ...f, role_title: f.role_title || r.name, rate: String(r.hourly_rate), fringe: f.department && deptFringe(deptRows.find((d) => d.name === f.department)) ? f.fringe : String(r.fringe_pct) })} />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field label="Regular hrs"><Input inputMode="decimal" className="font-mono" value={f.reg} onChange={(e) => setF({ ...f, reg: e.target.value })} /></Field>
         <Field label="OT hrs"><Input inputMode="decimal" className="font-mono" value={f.ot} onChange={(e) => setF({ ...f, ot: e.target.value })} /></Field>
@@ -262,7 +278,7 @@ function LaborForm({ deptOpts, rates, onSubmit }: { deptOpts: { v: string; l: st
   );
 }
 
-function EquipForm({ orgId, deptRows, onSubmit }: { orgId: string; deptRows: { id: string; name: string }[]; onSubmit: SubmitFn }) {
+function EquipForm({ orgId, deptRows, onSubmit }: { orgId: string; deptRows: Dept[]; onSubmit: SubmitFn }) {
   const ts = useTimestamp();
   const ref = useReferenceData(orgId);
   const rates = ref.data?.rates ?? [];
@@ -440,5 +456,131 @@ function TotalRow({ label, value }: { label: string; value: number }) {
       <span className="text-sm font-medium">{label}</span>
       <span className="font-mono text-lg font-semibold">{fmtUSD(value)}</span>
     </div>
+  );
+}
+
+function CrewForm({ orgId, deptRows, rates, onSubmit }: { orgId: string; deptRows: Dept[]; rates: Rate[]; onSubmit: SubmitFn }) {
+  const ts = useTimestamp();
+  const ref = useReferenceData(orgId);
+  const fleet = ref.data?.fleet ?? []; const femaRates = ref.data?.rates ?? [];
+  const deptOpts = deptRows.map((d) => ({ v: d.name, l: d.name }));
+  const [f, setF] = useState({ department: "", fema: "B", reg: "", ot: "", task: "", location: "" });
+  const fringe = deptFringe(deptRows.find((d) => d.name === f.department));
+  const blankMember = (): CrewMember & { key: string } => ({ key: uid(), name: "", role: "", rate: 0, fringe });
+  const [members, setMembers] = useState([blankMember(), blankMember()]);
+  const [equip, setEquip] = useState<(CrewEquipment & { key: string })[]>([]);
+  const [busy, setBusy] = useState(false);
+  const setM = (i: number, v: Partial<CrewMember>) => setMembers(members.map((m, j) => (j === i ? { ...m, ...v } : m)));
+  const hours = num(f.reg) + num(f.ot);
+  const preview = members.filter((m) => m.name.trim()).reduce((s, m) => s + laborCost(num(f.reg), num(f.ot), m.rate, m.fringe), 0)
+    + equip.reduce((s, e) => s + equipmentCost(e.activeHours, e.rate), 0);
+  const addAsset = (id: string) => {
+    const a = fleet.find((x) => x.id === id); if (!a) return;
+    const r = resolveAssetRate(a, femaRates);
+    setEquip([...equip, { key: uid(), name: `${a.asset_number} — ${r.equipment_name}`, code: r.fema_cost_code, edition: r.schedule_edition, source: r.rate_source, assetId: a.id, rate: r.hourly_rate, activeHours: hours, standbyHours: 0, operator: members[0]?.name || null }]);
+  };
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { labor, equipment } = buildCrewEntries({ ticketId: uid(), entryTime: ts.iso, timestampEdited: ts.edited, department: f.department || null, fema: f.fema, task: f.task || null, location: f.location || null, regularHours: num(f.reg), overtimeHours: num(f.ot), members, equipment: equip });
+    if (!labor.length) { toast.error("Add at least one crew member"); return; }
+    setBusy(true);
+    let ok = true;
+    for (const row of labor) ok = (await onSubmit("labor_entries", row)) && ok;
+    for (const row of equipment) ok = (await onSubmit("equipment_entries", row)) && ok;
+    setBusy(false);
+    if (ok) { toast.success(`Crew ticket saved: ${labor.length} labor + ${equipment.length} equipment entries`); setMembers([blankMember(), blankMember()]); setEquip([]); ts.reset(); }
+  };
+  return (
+    <form onSubmit={save} className={card}>
+      <p className="text-sm text-muted-foreground">Foreman daily ticket: log the crew's shift once. Beacon creates a linked labor entry for each person and an equipment entry for each unit.</p>
+      <TimestampField ts={ts} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Department"><Pick value={f.department} onChange={(v) => { const fr = deptFringe(deptRows.find((d) => d.name === v)); setF({ ...f, department: v }); setMembers(members.map((m) => ({ ...m, fringe: fr }))); }} options={deptOpts} /></Field>
+        <Field label="FEMA category"><Pick value={f.fema} onChange={(v) => setF({ ...f, fema: v })} options={femaOpts} /></Field>
+        <Field label="Regular hrs (each)"><Input inputMode="decimal" className="font-mono" value={f.reg} onChange={(e) => setF({ ...f, reg: e.target.value })} /></Field>
+        <Field label="OT hrs (each)"><Input inputMode="decimal" className="font-mono" value={f.ot} onChange={(e) => setF({ ...f, ot: e.target.value })} /></Field>
+        <Field label="Task"><Input value={f.task} onChange={(e) => setF({ ...f, task: e.target.value })} /></Field>
+        <Field label="Work location"><Input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></Field>
+      </div>
+      <div className="grid gap-2">
+        <Label>Crew roster</Label>
+        {members.map((m, i) => (
+          <div key={m.key} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_6rem_5rem_auto]">
+            <Input placeholder="Name" value={m.name} onChange={(e) => setM(i, { name: e.target.value })} />
+            <select aria-label="Role" className="h-10 rounded-md border bg-background px-2 text-sm" value={m.role} onChange={(e) => { const r = rates.find((x) => x.name === e.target.value); setM(i, { role: e.target.value, ...(r ? { rate: Number(r.hourly_rate), fringe: fringe || Number(r.fringe_pct) } : {}) }); }}>
+              <option value="">Role…</option>{rates.map((r) => <option key={r.id}>{r.name}</option>)}
+            </select>
+            <Input aria-label="Hourly rate" inputMode="decimal" className="font-mono" placeholder="$/hr" value={m.rate || ""} onChange={(e) => setM(i, { rate: num(e.target.value) })} />
+            <Input aria-label="Fringe %" inputMode="decimal" className="font-mono" placeholder="Fringe %" value={m.fringe || ""} onChange={(e) => setM(i, { fringe: num(e.target.value) })} />
+            <Button type="button" variant="ghost" size="icon" aria-label="Remove crew member" onClick={() => setMembers(members.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+          </div>
+        ))}
+        <Button type="button" variant="outline" onClick={() => setMembers([...members, blankMember()])}>Add crew member</Button>
+      </div>
+      <div className="grid gap-2">
+        <Label>Equipment used by this crew</Label>
+        {equip.map((e, i) => (
+          <div key={e.key} className="grid grid-cols-[minmax(0,1fr)_5rem_5rem_auto] items-center gap-2 rounded-md border p-2">
+            <span className="min-w-0 truncate text-sm">{e.name} <span className="font-mono text-xs text-muted-foreground">{e.code ?? "—"} · ${e.rate.toFixed(2)}/hr</span></span>
+            <Input aria-label="Active hours" inputMode="decimal" className="font-mono" value={e.activeHours || ""} placeholder="Active" onChange={(ev) => setEquip(equip.map((x, j) => (j === i ? { ...x, activeHours: num(ev.target.value) } : x)))} />
+            <Input aria-label="Standby hours" inputMode="decimal" className="font-mono" value={e.standbyHours || ""} placeholder="Standby" onChange={(ev) => setEquip(equip.map((x, j) => (j === i ? { ...x, standbyHours: num(ev.target.value) } : x)))} />
+            <Button type="button" variant="ghost" size="icon" aria-label="Remove equipment" onClick={() => setEquip(equip.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+          </div>
+        ))}
+        {fleet.length > 0 ? (
+          <select aria-label="Add fleet equipment" className="h-10 rounded-md border bg-background px-2 text-sm" value="" onChange={(e) => addAsset(e.target.value)}>
+            <option value="">+ Add equipment from city fleet…</option>{fleet.map((a) => <option key={a.id} value={a.id}>{a.asset_number} — {a.nickname}</option>)}
+          </select>
+        ) : <p className="text-xs text-muted-foreground">Add fleet assets in City Settings to attach equipment here.</p>}
+      </div>
+      <TotalRow label="Crew ticket estimated total" value={preview} />
+      <Button disabled={busy} type="submit" size="lg">Save crew ticket</Button>
+    </form>
+  );
+}
+
+const CONTRACT_KINDS = [{ v: "contractor", l: "Contractor (debris, tree, monitoring…)" }, { v: "rental", l: "Equipment rental" }, { v: "mutual_aid", l: "Mutual aid agency (billed)" }];
+const PROCUREMENT = ["Competitive sealed bid", "Competitive proposal (RFP)", "Small purchase (quotes)", "Micro-purchase", "Noncompetitive (exigency/emergency)", "Cooperative / piggyback contract", "Interlocal / mutual aid agreement"];
+
+function ContractForm({ deptOpts, onSubmit }: { deptOpts: { v: string; l: string }[]; onSubmit: SubmitFn }) {
+  const ts = useTimestamp();
+  const blank = { kind: "contractor", vendor: "", contract: "", po: "", ticket: "", procurement: "", description: "", department: "", fema: "A", qty: "1", unit: "", unitCost: "" };
+  const [f, setF] = useState(blank);
+  const [invoice, setInvoice] = useState<PhotoDraft | null>(null);
+  useRevokeOnDrop(useMemo(() => (invoice ? [invoice.url] : []), [invoice]));
+  const total = materialCost(num(f.qty), num(f.unitCost));
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await onSubmit("contract_entries", {
+      entry_time: ts.iso, timestamp_edited: ts.edited, kind: f.kind, vendor: f.vendor, contract_number: f.contract || null, po_number: f.po || null, ticket_number: f.ticket || null,
+      procurement_method: f.procurement || null, description: f.description, department: f.department || null, fema_category: f.fema, quantity: num(f.qty), unit: f.unit || null, unit_cost: num(f.unitCost),
+    }, invoice ? { receipt: invoice } : undefined)) { setF({ ...blank, kind: f.kind, vendor: f.vendor, contract: f.contract, procurement: f.procurement, department: f.department, fema: f.fema }); setInvoice(null); ts.reset(); }
+  };
+  return (
+    <form onSubmit={save} className={card}>
+      <TimestampField ts={ts} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Type"><Pick value={f.kind} onChange={(v) => setF({ ...f, kind: v, procurement: v === "mutual_aid" ? "Interlocal / mutual aid agreement" : f.procurement })} options={CONTRACT_KINDS} /></Field>
+        <Field label={f.kind === "mutual_aid" ? "Agency" : "Vendor"}><Input required value={f.vendor} onChange={(e) => setF({ ...f, vendor: e.target.value })} /></Field>
+        <Field label={f.kind === "mutual_aid" ? "Agreement #" : "Contract #"}><Input className="font-mono" value={f.contract} onChange={(e) => setF({ ...f, contract: e.target.value })} /></Field>
+        <Field label="PO #"><Input className="font-mono" value={f.po} onChange={(e) => setF({ ...f, po: e.target.value })} /></Field>
+        <Field label="Load / daily ticket #"><Input className="font-mono" value={f.ticket} onChange={(e) => setF({ ...f, ticket: e.target.value })} /></Field>
+        <Field label="Procurement method"><Pick value={f.procurement} onChange={(v) => setF({ ...f, procurement: v })} options={PROCUREMENT.map((p) => ({ v: p, l: p }))} /></Field>
+        <Field label="Department"><Pick value={f.department} onChange={(v) => setF({ ...f, department: v })} options={deptOpts} /></Field>
+        <Field label="FEMA category"><Pick value={f.fema} onChange={(v) => setF({ ...f, fema: v })} options={femaOpts} /></Field>
+      </div>
+      <Field label="Work description"><Input required placeholder="e.g. Vegetative debris haul, 40 CY truck" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
+      <div className="grid grid-cols-3 gap-4">
+        <Field label="Quantity"><Input inputMode="decimal" className="font-mono" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></Field>
+        <Field label="Unit"><Input placeholder="CY, hour, day" value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} /></Field>
+        <Field label="Unit cost $"><Input inputMode="decimal" className="font-mono" value={f.unitCost} onChange={(e) => setF({ ...f, unitCost: e.target.value })} /></Field>
+      </div>
+      <Field label="Invoice or ticket photo">
+        <Input type="file" accept="image/*" capture="environment" onChange={async (e) => { const file = e.target.files?.[0]; setInvoice(file ? await draftPhoto(file, null, "Invoice") : null); }} />
+      </Field>
+      {f.procurement.startsWith("Noncompetitive") && <p className="text-xs text-amber">Noncompetitive procurement needs a written exigency justification in the claim file.</p>}
+      <TotalRow label="Total" value={total} />
+      <Button type="submit" size="lg">Log contract / aid cost</Button>
+    </form>
   );
 }

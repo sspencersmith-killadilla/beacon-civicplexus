@@ -151,3 +151,12 @@ Equipment entries keep the cost code, edition, rate source and rate they were lo
 - Record standby hours, but don't expect them in reimbursement totals.
 - Photograph Before / During / After for damaged sites and debris.
 - Close the incident when recovery ends, then print the AAR and export the CSVs.
+
+## Project sites, crew tickets and contracts
+
+- **Project sites:** on an incident's **Projects** tab, Commanders add the worksheets FEMA will write (name, project #, category, facility, location). In the Field Logger, pick the project once at the top and every entry you log is tagged to it. The Projects tab shows entries and estimated cost per site.
+- **Crew Ticket:** a foreman logs the whole crew's shift once — roster, shared hours, and fleet equipment used. Beacon creates one labor entry per person and one equipment entry per unit, linked by a ticket ID.
+- **Contract / Aid:** log contractors, rentals and billed mutual-aid agencies with contract/PO/ticket numbers, procurement method and an invoice photo. Visiting mutual-aid staff can also be logged as labor with their agency named.
+- **Fringe profiles:** City Admins set FICA, retirement, medical, workers' comp and other percentages per department in City Settings. Labor and crew forms fill Fringe % from the department automatically.
+- **Map:** the incident **Map** tab plots geotagged field notes, hazards, photos and project sites.
+- **FEMA summary records:** the Exports tab downloads labor, equipment, materials and contract-work CSVs laid out like FEMA's summary record forms, grouped by project.

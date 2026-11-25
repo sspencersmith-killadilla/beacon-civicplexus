@@ -3,8 +3,8 @@ import type { IncidentData } from "./incident-data";
 export type ClaimBlocker = { kind: "unverified_rate" | "unapproved" | "pending_fema_rate" | "queued"; count: number; label: string };
 
 /** A claim packet is filing-ready only when every cost entry is approved, its rate verified, no equipment awaits a FEMA rate, and nothing is still queued on this device. */
-export function claimReadiness(d: Pick<IncidentData, "labor" | "equipment" | "materials" | "queuedIds">) {
-  const rows = [...d.labor, ...d.equipment, ...d.materials] as { rate_verified: boolean; review_status?: string; client_generated_id: string }[];
+export function claimReadiness(d: Pick<IncidentData, "labor" | "equipment" | "materials" | "queuedIds"> & { contracts?: IncidentData["contracts"] }) {
+  const rows = [...d.labor, ...d.equipment, ...d.materials, ...(d.contracts ?? [])] as { rate_verified: boolean; review_status?: string; client_generated_id: string }[];
   const unverified = rows.filter((r) => !r.rate_verified).length;
   const unapproved = rows.filter((r) => r.review_status !== "approved").length;
   const pendingFema = d.equipment.filter((e) => e.rate_source === "unlisted_pending_fema").length;
